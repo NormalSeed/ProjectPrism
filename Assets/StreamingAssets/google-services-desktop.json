@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "504100776999",
+    "project_id": "projectprism-seed",
+    "storage_bucket": "projectprism-seed.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:504100776999:android:ae5c6ff336be2c65e53202",
+        "android_client_info": {
+          "package_name": "com.seed.projectprism"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6Tn0nvdUruTg15w_uIlMs-z3w-C6ZiUU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
