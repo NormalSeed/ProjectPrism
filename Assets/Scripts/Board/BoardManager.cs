@@ -4,6 +4,9 @@ using UnityEngine.UI;
 
 public class BoardManager : MonoBehaviour, IBoardService
 {
+    [SerializeField] RectTransform parentRect;
+    [SerializeField] float targetAspectRatio = 0.85f;
+
     RectTransform boardRect;
     GridLayoutGroup gridLayout;
 
@@ -13,6 +16,7 @@ public class BoardManager : MonoBehaviour, IBoardService
     {
         boardRect = GetComponent<RectTransform>();
         gridLayout = GetComponent<GridLayoutGroup>();
+        if (parentRect == null) parentRect = transform.parent.GetComponent<RectTransform>();
     }
 
     IEnumerator Start()
@@ -33,6 +37,12 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     public void UpdateBoardLayOut()
     {
+        float containerWidth = parentRect.rect.width;
+        float calculatedHeight = containerWidth / targetAspectRatio;
+
+        parentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, containerWidth);
+        parentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, calculatedHeight);
+
         float boardSize = boardRect.rect.width;
         float totalPadding = gridLayout.padding.left + gridLayout.padding.right;
         float totalSpacing = gridLayout.spacing.x * (gridSize - 1);
