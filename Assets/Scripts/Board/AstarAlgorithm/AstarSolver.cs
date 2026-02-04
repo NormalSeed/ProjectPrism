@@ -3,11 +3,6 @@ using UnityEngine;
 
 public class AstarSolver
 {
-    readonly Vector2Int[] directions =
-    {
-        Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right,
-    };
-
     // 탐색 결과를 담을 클래스
     public class PathResult
     {
@@ -49,19 +44,22 @@ public class AstarSolver
 
             closedList[stateKey] = current.GCost;
 
-            foreach (var nextDir in directions)
+            foreach (var nextDir in GridDirections.All)
             {
-                // 180도 회전(역주행) 방지 (빛의 물리적 특성 반영)
+                // 180도 역주행 방지
                 if (nextDir == -current.Direction) continue;
 
                 Vector2Int nextPos = current.Position + nextDir;
 
                 if (!IsValid(nextPos, grid)) continue;
 
-                // 방향 전환 시에만 비용 발생 (사거리 무제한)
+                // 대각선 이동 로직 핵심:
+                // 방향이 이전과 완전히 같으면 비용 0 (직진)
+                // 방향이 조금이라도 다르면 비용 1 (기물 사용: 거울 or 프리즘)
                 int moveCost = (nextDir == current.Direction) ? 0 : 1;
                 int newCost = current.GCost + moveCost;
 
+                // 휴리스틱 계산 및 노드 추가
                 openList.Add(new PathNode(nextPos, nextDir, newCost, GetHeuristic(nextPos, goal), current));
             }
         }
@@ -84,7 +82,17 @@ public class AstarSolver
 
     int GetHeuristic(Vector2Int a, Vector2Int b)
     {
-        return (a.x != b.x && a.y != b.y) ? 1 : 0;
+        // 목표와 x, y 좌표가 모두 다르면 최소 1번은 꺾어야 함을 의미
+        // 대각선 이동이 가능하므로, dx와 dy가 같으면 0번 꺾어도 도달할 수 있음
+        int dx = Mathf.Abs(a.x - b.x);
+        int dy = Mathf.Abs(a.y - b.y);
+
+        // 현재 위치에서 목표까지 일직선(대각선 포함)으로 갈 수 없으면 비용 발생 예상
+        // dx != 0, dy != 0 이면서 dx != dy 인 경우
+        if (dx > 0 && dy > 0 && dx != dy) return 1;
+
+        // 그 외 (같은 행, 같은 열, 또는 완벽한 대각선상에 위치)
+        return 0;
     }
 
     bool IsValid(Vector2Int pos, int[,] grid)
