@@ -1,13 +1,22 @@
 ﻿using Cysharp.Threading.Tasks;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using UnityEngine;
 
+[Serializable]
 public class CrystalData
 {
     public Vector2Int Position;
     public int RequiredHits;    // 빛이 통과해야 하는 횟수
+    public int CurrentHits;  // 현재 빛이 통과한 횟수
+
+    // 남은 횟수 계산 (0 미만으로 내려가지 않음)
+    public int RemainingHits => Mathf.Max(0, RequiredHits - CurrentHits);
+
+    // 남은 횟수가 0이면 만족
+    public bool IsSatisfied => RemainingHits <= 0;
 }
 
 public class PuzzlePathFinder

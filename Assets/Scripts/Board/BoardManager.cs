@@ -9,24 +9,33 @@ public class BoardManager : MonoBehaviour, IBoardService
 {
     // 보드 출력 비율 설정
     [Header("Layout Settings")]
-    [SerializeField] RectTransform parentRect;
-    [SerializeField] float targetAspectRatio = 0.85f;
+    [SerializeField] private RectTransform parentRect;
+    [SerializeField] private float targetAspectRatio = 0.85f;
 
-    RectTransform boardRect;
-    GridLayoutGroup gridLayout;
-
-    int gridSize = 5;
+    private RectTransform boardRect;
+    private GridLayoutGroup gridLayout;
+    private int gridSize = 5;
 
     [Header("Light Visualization")]
-    [SerializeField] LineRenderer lightBeamRenderer;
-    [SerializeField] Button generateBoardButton;
+    [SerializeField] private LineRenderer lightBeamRenderer;
+    [SerializeField] private Button generateBoardButton;
+    [SerializeField] private float lightZOffset = -1f;
 
     [Header("Stage Generation Config")]
-    [SerializeField] int obstacleCount = 4; // 장애물 개수
-    [SerializeField] int crystalCount = 2;  // 크리스탈 개수
-    [SerializeField] int maxPieces = 3;     // 사용할 수 있는 최대 기물 수
+    [SerializeField] private int obstacleCount = 4; // 장애물 개수
+    [SerializeField] private int crystalCount = 2;  // 크리스탈 개수
+    [SerializeField] private int maxPieces = 3;     // 사용할 수 있는 최대 기물 수
 
-    PuzzlePathFinder pathFinder;
+    [SerializeField] private Tile[] tiles;
+    private PuzzlePathFinder pathFinder;
+
+    // 게임 상태 데이터
+    private PieceType[,] currentGrid = new PieceType[5, 5];
+    private List<CrystalData> currentCrystals = new List<CrystalData>();
+    private Vector2Int currentEmitterPos;
+    private Vector2Int currentEmitterDir;
+
+    private bool isGenerating = false;
 
     [Inject]
     public void Construct(PuzzlePathFinder _pathFinder)
@@ -34,20 +43,26 @@ public class BoardManager : MonoBehaviour, IBoardService
         pathFinder = _pathFinder;
     }
 
-    private bool isGenerating = false;
-
-    void Awake()
+    private void Awake()
     {
         boardRect = GetComponent<RectTransform>();
         gridLayout = GetComponent<GridLayoutGroup>();
         if (parentRect == null) parentRect = transform.parent.GetComponent<RectTransform>();
+
+        tiles = GetComponentsInChildren<Tile>();
     }
 
-    IEnumerator Start()
+    private IEnumerator Start()
     {
         yield return null;
         UpdateBoardLayOut();
-        generateBoardButton.onClick.AddListener(() => CreateNewStageAsync().Forget());
+
+        // 버튼에 리스너 등록 시 중복 등록 방지
+        generateBoardButton.onClick.AddListener(() =>
+        {
+            if (!isGenerating) CreateNewStageAsync().Forget();
+        });
+
     }
 
     public Vector3 GetWorldPosition(int x, int y)
@@ -59,14 +74,15 @@ public class BoardManager : MonoBehaviour, IBoardService
             return transform.GetChild(index).position;
         }
 
-        Debug.LogWarning($"[BoardManager] 범위에서 벗어났습니다.");
         return transform.position;
     }
 
-    public void SetTile(int x, int y)
+    public Tile GetTile(int x, int y)
     {
-        // TODO: 해당 좌표의 타일 속성을 변경하거나 기물을 배치하는 시각적 연출
-        Debug.Log($"[Board Manager] Tile Set: {x}, {y}");
+        int index = (y * gridSize) + x;
+        if (index >= 0 && index < tiles.Length) return tiles[index];
+
+        return null;
     }
 
     public void UpdateBoardLayOut()
@@ -109,12 +125,15 @@ public class BoardManager : MonoBehaviour, IBoardService
     {
         if (isGenerating) return;
         isGenerating = true;
+        generateBoardButton.interactable = false;   // 생성 중 버튼 비활성화
+
+        lightBeamRenderer.positionCount = 0;    // 이전 선 지우기
 
         Debug.Log("스테이지 생성 중...");
 
         List<Vector2Int> validRoute = null;
-        int[,] grid = new int[5, 5];
-        List<CrystalData> crystals = new List<CrystalData>();
+        int[,] tempGenGrid = new int[gridSize, gridSize];
+        List<CrystalData> tempCrystals = new List<CrystalData>();
         Vector2Int startPos = Vector2Int.zero;
         Vector2Int startDir = Vector2Int.right;
 
@@ -126,17 +145,19 @@ public class BoardManager : MonoBehaviour, IBoardService
             attemptCount++;
 
             // 데이터 초기화
-            System.Array.Clear(grid, 0, grid.Length);
-            crystals.Clear();
+            System.Array.Clear(tempGenGrid, 0, tempGenGrid.Length);
+            tempCrystals.Clear();
             List<Vector2Int> shuffledPos = GetShuffledPositions();
 
+            // 광원 위치 설정
             startPos = shuffledPos[0];
             shuffledPos.RemoveAt(0);
             startDir = GetValidStartDir(startPos);
 
+            // 크리스탈 배치
             for (int i = 0; i < crystalCount; i++)
             {
-                crystals.Add(new CrystalData
+                tempCrystals.Add(new CrystalData
                 {
                     Position = shuffledPos[0],
                     RequiredHits = Random.Range(1, 3) // 1~2회 방문 필요
@@ -144,47 +165,135 @@ public class BoardManager : MonoBehaviour, IBoardService
                 shuffledPos.RemoveAt(0);
             }
 
-            // 4. 장애물 배치
+            // 장애물 배치
             for (int i = 0; i < obstacleCount; i++)
             {
                 Vector2Int obsPos = shuffledPos[0];
-                grid[obsPos.x, obsPos.y] = 1; // 1은 장애물을 의미
+                tempGenGrid[obsPos.x, obsPos.y] = 1; // 1은 장애물을 의미
                 shuffledPos.RemoveAt(0);
             }
 
-            // 5. 비동기 검증 (A* 순회 탐색)
-            validRoute = await pathFinder.FindFullRouteAsync(grid, startPos, startDir, crystals, maxPieces);
+            // 비동기 검증 (A* 순회 탐색)
+            validRoute = await pathFinder.FindFullRouteAsync(tempGenGrid, startPos, startDir, tempCrystals, maxPieces);
 
             if (attemptCount % 50 == 0) await UniTask.Yield();
 
-            // 너무 많이 시도하면 잠시 쉬어줌
-            if (attemptCount > 1000)
+            if (attemptCount > 2000)
             {
-                Debug.LogWarning("적절한 맵을 찾지 못해 생성을 중단합니다.");
+                Debug.LogError("적절한 맵 생성 실패 (조건 완화 필요)");
                 break;
             }
         }
 
         Debug.Log($"{attemptCount}번의 시도 끝에 맵을 찾았습니다.");
 
-        // 시각적 배치
-        DrawLightPath(validRoute);
+        if(validRoute != null)
+        {
+            // 성공한 데이터를 실제 게임 데이터로 저장
+            currentCrystals = new List<CrystalData>(tempCrystals);
+            currentEmitterPos = startPos;
+            currentEmitterDir = startDir;
 
-        ApplyStageToUI(grid, crystals);
+            // PieceType 그리드 구성
+            System.Array.Clear(currentGrid, 0, currentGrid.Length);
+            for (int y = 0; y < gridSize; y++)
+            {
+                for (int x = 0; x < gridSize; x++)
+                {
+                    if (tempGenGrid[x, y] == 1) currentGrid[x, y] = PieceType.Obstacle;
+                }
+            }
+            currentGrid[startPos.x, startPos.y] = PieceType.Emitter;
+            foreach (var cry in currentCrystals)
+            {
+                currentGrid[cry.Position.x, cry.Position.y] = PieceType.Crystal;
+            }
 
+            Debug.Log($"{attemptCount}번의 시도 끝에 맵을 찾았습니다.");
+
+            // 시각화 업데이트
+            ApplyStageToUI();
+
+            Debug.Log($"{attemptCount}번의 시도 끝에 맵을 찾았습니다.");
+
+            SimulateCurrentLight();
+        }
+
+        generateBoardButton.interactable = true;
         isGenerating = false;
     }
 
-    Vector2Int GetValidStartDir(Vector2Int pos)
+
+
+    // 현재 보드에 배치된 기물(거울/프리즘)을 기반으로 빛을 계산하는 실제 게임 로직
+    public void SimulateCurrentLight()
     {
-        if (pos.x == 0) return Vector2Int.right;
-        if (pos.x == gridSize - 1) return Vector2Int.left;
-        if (pos.y == 0) return Vector2Int.up;
-        if (pos.y == gridSize - 1) return Vector2Int.down;
-        return Vector2Int.right; // 중앙에 있을 경우 기본값
+        // 1. 모든 크리스탈의 현재 히트 초기화
+        foreach (var cry in currentCrystals) cry.CurrentHits = 0;
+
+        List<Vector2Int> path = new List<Vector2Int> { currentEmitterPos };
+        Vector2Int currPos = currentEmitterPos;
+        Vector2Int currDir = currentEmitterDir;
+
+        // 2. 빛 추적 (최대 25칸까지만 순회)
+        int safetyIndex = gridSize * gridSize;
+        while (safetyIndex-- > 0)
+        {
+            Vector2Int nextPos = currPos + currDir;
+
+            // 보드 밖으로 나가면 중단
+            if (nextPos.x < 0 || nextPos.x >= gridSize || nextPos.y < 0 || nextPos.y >= gridSize)
+                break;
+
+            path.Add(nextPos);
+            currPos = nextPos;
+
+            // 크리스탈 통과 시 카운트 (이후 기물 배치 시 0으로 초기화 후 재계산됨)
+            var crystal = currentCrystals.Find(c => c.Position == currPos);
+            if (crystal != null) crystal.CurrentHits++;
+
+            PieceType type = currentGrid[currPos.x, currPos.y];
+
+            // 장애물에 막힘
+            if (type == PieceType.Obstacle) break;
+
+            // TODO: 여기서 유저가 배치한 Mirror/Prism에 따른 방향 전환 로직 추가
+            // if (type == PieceType.Mirror) currDir = ...
+        }
+
+        // 3. 결과 반영
+        DrawLightPath(path);
+        RefreshAllTiles();
     }
 
-    List<Vector2Int> GetShuffledPositions()
+    private void RefreshAllTiles()
+    {
+        for (int y = 0; y < gridSize; y++)
+        {
+            for (int x = 0; x < gridSize; x++)
+            {
+                Tile tile = GetTile(x, y);
+                if (tile == null) continue;
+
+                PieceType type = currentGrid[x, y];
+                CrystalData cryData = currentCrystals.Find(c => c.Position == new Vector2Int(x, y));
+                Vector2Int? eDir = (new Vector2Int(x, y) == currentEmitterPos) ? (Vector2Int?)currentEmitterDir : null;
+
+                tile.SetState(type, cryData, eDir);
+            }
+        }
+    }
+
+    private Vector2Int GetValidStartDir(Vector2Int pos)
+    {
+        if (pos.x == 0) return GridDirections.Right;
+        if (pos.x == gridSize - 1) return GridDirections.Left;
+        if (pos.y == 0) return GridDirections.Down;
+        if (pos.y == gridSize - 1) return GridDirections.Up;
+        return GridDirections.Right; // 중앙에 있을 경우 기본값
+    }
+
+    private List<Vector2Int> GetShuffledPositions()
     {
         List<Vector2Int> positions = new List<Vector2Int>();
         for (int y = 0; y < gridSize; y++)
@@ -206,8 +315,10 @@ public class BoardManager : MonoBehaviour, IBoardService
         return positions;
     }
 
-    void ApplyStageToUI(int[,] grid, List<CrystalData> crystals)
+    private void ApplyStageToUI()
     {
-        // 실제 UI 타일들을 활성화/비활성화 하거나 크리스탈 아이콘을 띄움
+        // 모든 타일 초기화
+        foreach (var tile in tiles) tile.ResetTile();
+        RefreshAllTiles();
     }
 }
