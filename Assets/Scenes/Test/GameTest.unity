@@ -3070,7 +3070,11 @@ MonoBehaviour:
   lightZOffset: -1
   obstacleCount: 4
   crystalCount: 2
-  maxPieces: 3
+  maxPieces: 5
+  assignedSpirits: []
+  maxTeamSize: 3
+  dragGhostIcon: {fileID: 0}
+  inventoryText: {fileID: 0}
   tiles: []
 --- !u!1001 &1056983048
 PrefabInstance:

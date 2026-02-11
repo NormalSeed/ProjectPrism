@@ -1,6 +1,8 @@
 ﻿using Cysharp.Threading.Tasks;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -21,10 +23,18 @@ public class BoardManager : MonoBehaviour, IBoardService
     [SerializeField] private Button generateBoardButton;
     [SerializeField] private float lightZOffset = -1f;
 
-    [Header("Stage Generation Config")]
+    [Header("Stage Config")]
     [SerializeField] private int obstacleCount = 4; // 장애물 개수
     [SerializeField] private int crystalCount = 2;  // 크리스탈 개수
-    [SerializeField] private int maxPieces = 3;     // 사용할 수 있는 최대 기물 수
+    [SerializeField] private int maxPieces = 5;     // 사용할 수 있는 최대 기물 수
+
+    [Header("Team System")]
+    [SerializeField] private List<SpiritData> assignedSpirits = new List<SpiritData>();
+    [SerializeField] private int maxTeamSize = 3;
+
+    [Header("Interaction UI")]
+    [SerializeField] Image dragGhostIcon;
+    [SerializeField] TextMeshProUGUI inventoryText;
 
     [SerializeField] private Tile[] tiles;
     private PuzzlePathFinder pathFinder;
@@ -32,8 +42,12 @@ public class BoardManager : MonoBehaviour, IBoardService
     // 게임 상태 데이터
     private PieceType[,] currentGrid = new PieceType[5, 5];
     private List<CrystalData> currentCrystals = new List<CrystalData>();
-    private Vector2Int currentEmitterPos;
-    private Vector2Int currentEmitterDir;
+    private Vector2Int currentEmitterPos = new Vector2Int(-1, -1);
+    private Vector2Int currentEmitterDir = Vector2Int.right;
+
+    // 인벤토리 상태
+    private PieceType selectedPieceType = PieceType.None;
+    private Dictionary<PieceType, int> remainingPieces = new Dictionary<PieceType, int>();
 
     private bool isGenerating = false;
 
@@ -50,6 +64,8 @@ public class BoardManager : MonoBehaviour, IBoardService
         if (parentRect == null) parentRect = transform.parent.GetComponent<RectTransform>();
 
         tiles = GetComponentsInChildren<Tile>();
+
+        if (dragGhostIcon != null) dragGhostIcon.gameObject.SetActive(false);
     }
 
     private IEnumerator Start()
@@ -63,7 +79,128 @@ public class BoardManager : MonoBehaviour, IBoardService
             if (!isGenerating) CreateNewStageAsync().Forget();
         });
 
+        InitInventory();
     }
+
+    // 인벤토리 초기화 (팀 전체 기물 합산)
+    private void InitInventory()
+    {
+        remainingPieces.Clear();
+
+        // 팀원이 3마리를 초과하지 않도록 보정
+        var spiritsToProcess = assignedSpirits.Take(maxTeamSize).ToList();
+
+        foreach (var spirit in spiritsToProcess)
+        {
+            if (spirit == null) continue;
+
+            foreach (var p in spirit.startingPieces)
+            {
+                if (remainingPieces.ContainsKey(p.pieceType))
+                    remainingPieces[p.pieceType] += p.count;
+                else
+                    remainingPieces[p.pieceType] = p.count;
+            }
+        }
+        UpdateInventoryUI();
+    }
+
+    private int GetTotalPieceCount()
+    {
+        int total = 0;
+        var spiritsToProcess = assignedSpirits.Take(maxTeamSize);
+
+        foreach (var spirit in spiritsToProcess)
+        {
+            if (spirit != null) total += spirit.GetTotalPieceCount();
+        }
+        return total;
+    }
+
+    // 상호작용 로직
+    public void OnPieceButtonClicked(PieceType type)
+    {
+        if (remainingPieces.ContainsKey(type) && remainingPieces[type] > 0)
+        {
+            selectedPieceType = type;
+            Debug.Log($"[BoardManager] {type} 선택됨. 배치할 타일을 선택하세요.");
+        }
+    }
+
+    public void OnTileClicked(int x, int y)
+    {
+        PieceType existing = currentGrid[x, y];
+
+        // 이미 기물이 있는 경우 : 회수
+        if (existing == PieceType.Mirror || existing == PieceType.Prism)
+        {
+            RemovePiece(x, y, existing);
+            selectedPieceType = PieceType.None;
+        }
+        // 빈 칸이고 선택된 기물이 있는 경우 : 배치
+        else if (existing == PieceType.None && selectedPieceType != PieceType.None)
+        {
+            TryPlacePiece(x, y, selectedPieceType);
+            selectedPieceType = PieceType.None;
+        }
+
+        SimulateCurrentLight();
+    }
+
+    public void OnPieceDropped(Vector2 screenPos, PieceType type)
+    {
+        foreach (var tile in tiles)
+        {
+            if (RectTransformUtility.RectangleContainsScreenPoint(tile.GetComponent<RectTransform>(), screenPos))
+            {
+                TryPlacePiece(tile.X, tile.Y, type);
+                break;
+            }
+        }
+        SimulateCurrentLight();
+    }
+
+    public void TryPlacePiece(int x, int y, PieceType type)
+    {
+        if (currentGrid[x, y] != PieceType.None) return;
+        if (!remainingPieces.ContainsKey(type) || remainingPieces[type] <= 0) return;
+
+        currentGrid[x, y] = type;
+        remainingPieces[type]--;
+        UpdateInventoryUI();
+        RefreshAllTiles();
+    }
+
+    private void RemovePiece(int x, int y, PieceType type)
+    {
+        currentGrid[x, y] = PieceType.None;
+        remainingPieces[type]++;
+
+        UpdateInventoryUI();
+        RefreshAllTiles();
+    }
+
+    private void UpdateInventoryUI()
+    {
+        if (inventoryText == null) return;
+        int m = remainingPieces.ContainsKey(PieceType.Mirror) ? remainingPieces[PieceType.Mirror] : 0;
+        int p = remainingPieces.ContainsKey(PieceType.Prism) ? remainingPieces[PieceType.Prism] : 0;
+        inventoryText.text = $"거울 : {m} | 프리즘 : {p}";
+    }
+
+    public void SetDragGhost(bool active, Sprite sprite = null)
+    {
+        if (dragGhostIcon == null) return;
+        dragGhostIcon.gameObject.SetActive(active);
+        if (active && sprite != null) dragGhostIcon.sprite = sprite;
+    }
+
+    public void UpdateDragGhostPos(Vector2 position)
+    {
+        if (dragGhostIcon == null) return;
+        dragGhostIcon.transform.position = position;
+    }
+
 
     public Vector3 GetWorldPosition(int x, int y)
     {
@@ -71,7 +208,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         int index = (y * gridSize) + x;
         if (index < transform.childCount)
         {
-            return transform.GetChild(index).position;
+            return tiles[index].transform.position;
         }
 
         return transform.position;
@@ -124,6 +261,14 @@ public class BoardManager : MonoBehaviour, IBoardService
     public async UniTaskVoid CreateNewStageAsync()
     {
         if (isGenerating) return;
+
+        int totalAvailablePieces = GetTotalPieceCount();
+        if (totalAvailablePieces <= 0)
+        {
+            Debug.LogError("[BoardManager] 배치된 정령의 기물이 0개입니다. 정령을 먼저 설정하세요.");
+            return;
+        }
+
         isGenerating = true;
         generateBoardButton.interactable = false;   // 생성 중 버튼 비활성화
 
@@ -133,7 +278,10 @@ public class BoardManager : MonoBehaviour, IBoardService
 
         List<Vector2Int> validRoute = null;
         int[,] tempGenGrid = new int[gridSize, gridSize];
+
         List<CrystalData> tempCrystals = new List<CrystalData>();
+        List<int> originalHits = new List<int>();
+
         Vector2Int startPos = Vector2Int.zero;
         Vector2Int startDir = Vector2Int.right;
 
@@ -147,6 +295,8 @@ public class BoardManager : MonoBehaviour, IBoardService
             // 데이터 초기화
             System.Array.Clear(tempGenGrid, 0, tempGenGrid.Length);
             tempCrystals.Clear();
+            originalHits.Clear();
+
             List<Vector2Int> shuffledPos = GetShuffledPositions();
 
             // 광원 위치 설정
@@ -155,15 +305,31 @@ public class BoardManager : MonoBehaviour, IBoardService
             startDir = GetValidStartDir(startPos);
 
             // 크리스탈 배치
+            bool isDirectHitLayout = false;
             for (int i = 0; i < crystalCount; i++)
             {
+
+                Vector2Int cPos = shuffledPos[0];
+
+                // 광원의 초기 직선 경로상에 크리스탈이 있는지 체크
+                if (IsDirectHit(startPos, startDir, cPos))
+                {
+                    isDirectHitLayout = true;
+                    break;
+                }
+
+                int hits = Random.Range(1, 3);
                 tempCrystals.Add(new CrystalData
                 {
                     Position = shuffledPos[0],
-                    RequiredHits = Random.Range(1, 3) // 1~2회 방문 필요
+                    RequiredHits = hits
                 });
+                originalHits.Add(hits);
                 shuffledPos.RemoveAt(0);
             }
+
+            // 직선 배치라면 이 배치는 버리고 처음부터 다시
+            if (isDirectHitLayout) continue;
 
             // 장애물 배치
             for (int i = 0; i < obstacleCount; i++)
@@ -174,7 +340,7 @@ public class BoardManager : MonoBehaviour, IBoardService
             }
 
             // 비동기 검증 (A* 순회 탐색)
-            validRoute = await pathFinder.FindFullRouteAsync(tempGenGrid, startPos, startDir, tempCrystals, maxPieces);
+            validRoute = await pathFinder.FindFullRouteAsync(tempGenGrid, startPos, startDir, tempCrystals, totalAvailablePieces);
 
             if (attemptCount % 50 == 0) await UniTask.Yield();
 
@@ -190,7 +356,17 @@ public class BoardManager : MonoBehaviour, IBoardService
         if(validRoute != null)
         {
             // 성공한 데이터를 실제 게임 데이터로 저장
-            currentCrystals = new List<CrystalData>(tempCrystals);
+            currentCrystals = new List<CrystalData>();
+            for (int i = 0; i < tempCrystals.Count; i++)
+            {
+                currentCrystals.Add(new CrystalData
+                {
+                    Position = tempCrystals[i].Position,
+                    RequiredHits = originalHits[i],
+                    CurrentHits = 0
+                });
+            }
+
             currentEmitterPos = startPos;
             currentEmitterDir = startDir;
 
@@ -223,20 +399,47 @@ public class BoardManager : MonoBehaviour, IBoardService
         isGenerating = false;
     }
 
+    // 광원의 위치와 방향을 기준으로 대상(target)이 직선상에 있는지 확인
+    private bool IsDirectHit(Vector2Int origin, Vector2Int dir, Vector2Int target)
+    {
+        Vector2Int diff = target - origin;
 
+        // 방향 벡터가 X축일 때 Y가 같아야 하고, Y축일 때 X가 같아야 함
+        if (dir.x != 0 && diff.y != 0) return false;
+        if (dir.y != 0 && diff.x != 0) return false;
+
+        // 발사 방향과 반대방향에 있는지도 체크
+        if (dir.x > 0 && diff.x <= 0) return false;
+        if (dir.x < 0 && diff.x >= 0) return false;
+        if (dir.y > 0 && diff.y <= 0) return false;
+        if (dir.y < 0 && diff.y >= 0) return false;
+
+        return true;
+    }
 
     // 현재 보드에 배치된 기물(거울/프리즘)을 기반으로 빛을 계산하는 실제 게임 로직
     public void SimulateCurrentLight()
     {
-        // 1. 모든 크리스탈의 현재 히트 초기화
+        if (currentEmitterPos.x == -1) return;
+
+        // 모든 크리스탈의 현재 히트 초기화
         foreach (var cry in currentCrystals) cry.CurrentHits = 0;
 
         List<Vector2Int> path = new List<Vector2Int> { currentEmitterPos };
         Vector2Int currPos = currentEmitterPos;
         Vector2Int currDir = currentEmitterDir;
 
-        // 2. 빛 추적 (최대 25칸까지만 순회)
-        int safetyIndex = gridSize * gridSize;
+        // 방향이 0이면 진행 불가
+        if (currDir == Vector2Int.zero)
+        {
+            Debug.LogError("[BoardManager] 광원의 발사 방향이 (0,0)입니다. 설정을 확인하세요.");
+            DrawLightPath(path);
+            RefreshAllTiles();
+            return;
+        }
+
+        // 빛 추적 (최대 25칸까지만 순회)
+        int safetyIndex = gridSize * gridSize * 2;
         while (safetyIndex-- > 0)
         {
             Vector2Int nextPos = currPos + currDir;
@@ -257,13 +460,33 @@ public class BoardManager : MonoBehaviour, IBoardService
             // 장애물에 막힘
             if (type == PieceType.Obstacle) break;
 
-            // TODO: 여기서 유저가 배치한 Mirror/Prism에 따른 방향 전환 로직 추가
-            // if (type == PieceType.Mirror) currDir = ...
+            // 유저가 배치한 Mirror/Prism에 따른 방향 전환 로직
+            if (type == PieceType.Mirror)
+            {
+                // 거울 반사: 90도 회전 (대각선 거울)
+                currDir = new Vector2Int(-currDir.y, -currDir.x);
+            }
+            else if (type == PieceType.Prism)
+            {
+                // 프리즘 굴절: 45도 굴절 (Cardinals to Diagonals)
+                Vector2Int newDir = currDir + new Vector2Int(currDir.y == 0 ? 0 : currDir.x, currDir.x == 0 ? 0 : currDir.y);
+                currDir = new Vector2Int(Mathf.Clamp(newDir.x, -1, 1), Mathf.Clamp(newDir.y, -1, 1));
+            }
+
+            // 굴절 후 방향이 0이 되면 중단
+            if (currDir == Vector2Int.zero) break;
         }
 
-        // 3. 결과 반영
+        // 결과 반영
         DrawLightPath(path);
         RefreshAllTiles();
+        CheckWinCondition();
+    }
+
+    private void CheckWinCondition()
+    {
+        if (currentCrystals.Count > 0 && currentCrystals.All(c => c.IsSatisfied))
+            Debug.Log("<color=cyan>[Game] 스테이지 클리어!</color>");
     }
 
     private void RefreshAllTiles()

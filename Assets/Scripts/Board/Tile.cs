@@ -21,14 +21,14 @@ public class Tile : MonoBehaviour
     [SerializeField] private Color normalColor = Color.white;
     [SerializeField] private Color satisfiedColor = Color.green;
 
-    private int x, y;
+    public int X, Y;
     private PieceType currentType = PieceType.None;
     private Action<int, int> onClickCallback;
 
     public void Init(int _x, int _y, Action<int, int> onClick)
     {
-        x = _x;
-        y = _y;
+        X = _x;
+        Y = _y;
         onClickCallback = onClick;
     }
 
@@ -78,6 +78,6 @@ public class Tile : MonoBehaviour
     {
         // 장애물이나 광원은 유저가 조작할 수 없음
         if (currentType == PieceType.Obstacle || currentType == PieceType.Emitter) return;
-        onClickCallback?.Invoke(x, y);
+        onClickCallback?.Invoke(X, Y);
     }
 }
