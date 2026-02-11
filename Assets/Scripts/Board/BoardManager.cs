@@ -262,7 +262,8 @@ public class BoardManager : MonoBehaviour, IBoardService
     {
         if (isGenerating) return;
 
-        int totalAvailablePieces = GetTotalPieceCount();
+        //int totalAvailablePieces = GetTotalPieceCount();
+        int totalAvailablePieces = 5;   // 테스트를 위해 기물 수를 5로 설정
         if (totalAvailablePieces <= 0)
         {
             Debug.LogError("[BoardManager] 배치된 정령의 기물이 0개입니다. 정령을 먼저 설정하세요.");
