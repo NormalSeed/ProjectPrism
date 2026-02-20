@@ -9,7 +9,6 @@ using VContainer;
 
 public class BoardManager : MonoBehaviour, IBoardService
 {
-    // 보드 출력 비율 설정
     [Header("Layout Settings")]
     [SerializeField] private RectTransform parentRect;
     [SerializeField] private float targetAspectRatio = 0.85f;
