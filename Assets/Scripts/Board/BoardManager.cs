@@ -49,6 +49,7 @@ public class BoardManager : MonoBehaviour, IBoardService
     private Dictionary<PieceType, int> remainingPieces = new Dictionary<PieceType, int>();
 
     private bool isGenerating = false;
+    private bool hasUserInteracted = false;
 
     [Inject]
     public void Construct(PuzzlePathFinder _pathFinder)
@@ -106,13 +107,7 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     private int GetTotalPieceCount()
     {
-        int total = 0;
-        var spiritsToProcess = assignedSpirits.Take(maxTeamSize);
-
-        foreach (var spirit in spiritsToProcess)
-        {
-            if (spirit != null) total += spirit.GetTotalPieceCount();
-        }
+        int total = assignedSpirits.Take(maxTeamSize).Where(s => s != null).Sum(s => s.GetTotalPieceCount());
         return total;
     }
 
@@ -128,6 +123,8 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     public void OnTileClicked(int x, int y)
     {
+        if (isGenerating || currentEmitterPos.x == -1) return;
+
         PieceType existing = currentGrid[x, y];
 
         // 이미 기물이 있는 경우 : 회수
@@ -304,32 +301,26 @@ public class BoardManager : MonoBehaviour, IBoardService
             shuffledPos.RemoveAt(0);
             startDir = GetValidStartDir(startPos);
 
+            // shuffledPos에서 광원 앞 칸을 찾아 제거하여 장애물이나 크리스탈이 놓이지 않게 함
+            Vector2Int nextToEmitterPos = startPos + startDir;
+            shuffledPos.Remove(nextToEmitterPos);
+
             // 크리스탈 배치
-            bool isDirectHitLayout = false;
+            var nonDirectPosList = shuffledPos.Where(p => !IsDirectHit(startPos, startDir, p)).ToList();
+
+            if (nonDirectPosList.Count < crystalCount) continue;
+
             for (int i = 0; i < crystalCount; i++)
             {
-
-                Vector2Int cPos = shuffledPos[0];
-
-                // 광원의 초기 직선 경로상에 크리스탈이 있는지 체크
-                if (IsDirectHit(startPos, startDir, cPos))
-                {
-                    isDirectHitLayout = true;
-                    break;
-                }
-
+                Vector2Int cPos = nonDirectPosList[i];
                 int hits = Random.Range(1, 3);
-                tempCrystals.Add(new CrystalData
-                {
-                    Position = shuffledPos[0],
-                    RequiredHits = hits
-                });
+                tempCrystals.Add(new CrystalData { Position = cPos, RequiredHits = hits });
                 originalHits.Add(hits);
-                shuffledPos.RemoveAt(0);
-            }
+                shuffledPos.Remove(cPos);
 
-            // 직선 배치라면 이 배치는 버리고 처음부터 다시
-            if (isDirectHitLayout) continue;
+                // PuzzlePathFinder에게 이 자리는 "기물 설치 불가능"임을 알리기 위해 그리드에 마킹 (2 = Crystal)
+                tempGenGrid[cPos.x, cPos.y] = 2;
+            }
 
             // 장애물 배치
             for (int i = 0; i < obstacleCount; i++)
