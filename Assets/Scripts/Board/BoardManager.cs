@@ -535,4 +535,9 @@ public class BoardManager : MonoBehaviour, IBoardService
         foreach (var tile in tiles) tile.ResetTile();
         RefreshAllTiles();
     }
+
+    public void SetTeam(List<SpiritData> team)
+    {
+        assignedSpirits = team;
+    }
 }
