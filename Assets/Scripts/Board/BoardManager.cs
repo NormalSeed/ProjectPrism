@@ -259,6 +259,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         if (isGenerating) return;
 
         //int totalAvailablePieces = GetTotalPieceCount();
+        // TODO: 정령과 인벤토리 로직이 완성되면 totalAvailablePieces를 GetTotalPieceCount 메서드를 이용해 설정해야 함
         int totalAvailablePieces = 5;   // 테스트를 위해 기물 수를 5로 설정
         if (totalAvailablePieces <= 0)
         {

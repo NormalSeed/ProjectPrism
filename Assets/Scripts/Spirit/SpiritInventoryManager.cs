@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using VContainer;
 
-public class SpiritInventoryManager : MonoBehaviour
+public class SpiritInventoryManager : MonoBehaviour, IInventoryService
 {
     [Header("Data Collection")]
     [SerializeField] private List<SpiritData> allOwnedSpirits = new List<SpiritData>(); // 보유 중인 모든 정령
@@ -12,6 +13,8 @@ public class SpiritInventoryManager : MonoBehaviour
     private readonly int maxTeamSize = 3;   // 최대 3개체까지 구성 가능
 
     private IBoardService boardService;
+
+    public event Action OnInventoryUpdated;
 
     [Inject]
     public void Contruct(IBoardService _boardService)
@@ -48,7 +51,8 @@ public class SpiritInventoryManager : MonoBehaviour
         }
 
         SyncTeamWithBoard();
-        // TODO: UI 갱신 이벤트 발생
+        // UI 상태 변경 알림
+        OnInventoryUpdated?.Invoke();
     }
 
     /// <summary>
@@ -67,5 +71,6 @@ public class SpiritInventoryManager : MonoBehaviour
     // 데이터 조회용 메서드
     public List<SpiritData> GetOwnedSpirits() => allOwnedSpirits;
     public bool IsSpiritSelected(SpiritData spirit) => selectedTeam.Contains(spirit);
+
     public int CurrentTeamCount => selectedTeam.Count;
 }

@@ -9,5 +9,6 @@ public class BoardLifetimeScope : LifetimeScope
         builder.Register<PuzzlePathFinder>(Lifetime.Singleton);
 
         builder.RegisterComponentInHierarchy<BoardManager>().As<IBoardService>();
+        builder.RegisterComponentInHierarchy<SpiritInventoryManager>().As<IInventoryService>();
     }
 }
