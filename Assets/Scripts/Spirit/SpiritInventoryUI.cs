@@ -7,7 +7,7 @@ using VContainer;
 public class SpiritInventoryUI : MonoBehaviour
 {
     [Header("Layout")]
-    [SerializeField] private RectTransform slotContainerRect;            // 정령 슬롯이 배치될 부모 객체
+    [SerializeField] private RectTransform slotContainerRect;   // 정령 슬롯이 배치될 부모 객체
     [SerializeField] private SpiritSlotUI slotPrefab;           // 개별 정령 슬롯 프리팹
 
     private GridLayoutGroup gridLayout;
@@ -133,6 +133,9 @@ public class SpiritInventoryUI : MonoBehaviour
         UpdateStatusUI();
     }
 
+    /// <summary>
+    /// 팀 편성 상태 및 시작 버튼 활성화 여부를 업데이트하는 메서드. 시작 버튼 활성화쪽은 이후에 제거 필요함
+    /// </summary>
     private void UpdateStatusUI()
     {
         if (teamCountText != null)
