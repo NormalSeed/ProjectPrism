@@ -17,7 +17,7 @@ public class SpiritInventoryManager : MonoBehaviour, IInventoryService
     public event Action OnInventoryUpdated;
 
     [Inject]
-    public void Contruct(IBoardService _boardService)
+    public void Construct(IBoardService _boardService)
     {
         boardService = _boardService;
     }
@@ -77,8 +77,17 @@ public class SpiritInventoryManager : MonoBehaviour, IInventoryService
     // 데이터 로드용 메서드
     public void LoadOwnedSpirits(List<SpiritData> spirits)
     {
+        if (spirits == null)
+        {
+            Debug.Log("allOwnedSpirits에 정령이 존재하지 않습니다.");
+            return;
+        }
+
         allOwnedSpirits = new List<SpiritData>(spirits);
+
+        // 데이터가 로드되었음을 UI에 즉시 알림
         OnInventoryUpdated?.Invoke();
-        Debug.Log($"[Inventory] {allOwnedSpirits.Count}개의 정령 데이터를 로드함.");
+
+        Debug.Log($"[Inventory] {allOwnedSpirits.Count}개의 정령 데이터가 성공적으로 로드되었습니다.");
     }
 }

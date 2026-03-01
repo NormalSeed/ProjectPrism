@@ -15,10 +15,13 @@ public class SpiritInventoryUI : MonoBehaviour
 
     private GridLayoutGroup gridLayout;
     private const int columns = 4;
+    private float slotSize;
 
     [Header("Status UI")]
     [SerializeField] private TextMeshProUGUI teamCountText;    // 팀 편성 인원 표시
     [SerializeField] private Button startButton;                // 게임 시작 버튼
+
+    private CanvasGroup group;
 
     private IInventoryService inventoryService;
 
@@ -33,10 +36,14 @@ public class SpiritInventoryUI : MonoBehaviour
 
     private void Awake()
     {
+        group = GetComponent<CanvasGroup>();
+
         if (slotContainerRect != null)
         {
             gridLayout = slotContainerRect.GetComponent<GridLayoutGroup>();
         }
+
+        CanvasGroupExtensions.SetUIActivation(group, false);
     }
 
     private IEnumerator Start()
@@ -84,9 +91,13 @@ public class SpiritInventoryUI : MonoBehaviour
 
         // 정사각형 슬롯을 위한 최종 크기 계산
         float finalSize = (containerWidth - totalPadding - totalSpacing) / columns;
+        slotSize = finalSize;
 
         // cellSize를 설정
         gridLayout.cellSize = new Vector2(finalSize, finalSize);
+
+        // UI 크기 조정
+
 
         Debug.Log($"[InventoryUI] 슬롯 레이아웃 업데이트 완료. 셀 크기: {finalSize}");
     }
@@ -130,7 +141,7 @@ public class SpiritInventoryUI : MonoBehaviour
             var spiritData = ownedSpirits[i];
             bool isSelected = inventoryService.IsSpiritSelected(spiritData);
 
-            slot.Bind(spiritData, isSelected, (data) =>
+            slot.Bind(spiritData, isSelected, slotSize, (data) =>
             {
                 inventoryService.ToggleSpiritSelection(data);
             });
@@ -171,8 +182,13 @@ public class SpiritInventoryUI : MonoBehaviour
         // TODO: 실제 게임 씬으로 넘어가거나 BoardManager의 스테이지 생성을 트리거하는 로직 구현 필요
     }
 
+    public void OnInventoryButtonClicke()
+    {
+        CanvasGroupExtensions.SetUIActivation(group, true);
+    }
+
     private void OnCloseButtonClicked()
     {
-        inventoryPanel.SetActive(false);
+        CanvasGroupExtensions.SetUIActivation(group, false);
     }
 }

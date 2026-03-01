@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
@@ -22,8 +23,58 @@ public class SpiritSlotUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI defText;
     [SerializeField] private TextMeshProUGUI pieceInfoText; // TODO: 텍스트가 아니라 이미지 + 텍스트 형식으로 바꿔줘야 함
 
+
+    [Header("UI Rects")]
+    [SerializeField] private List<RectTransform> rects;
+
+    // 원본 데이터를 저장하기 위한 구조체
+    private struct OriginalData
+    {
+        public RectTransform rect;
+        public Vector2 size;
+        public float fontSize; // TMP인 경우 폰트 크기 저장
+    }
+
+    private List<OriginalData> _cachedData = new List<OriginalData>();
     private SpiritData boundData;
     private Action<SpiritData> onClickCallback;
+    private bool _isInitialized = false;
+
+    private void Awake()
+    {
+        InitializeCache();
+
+        // 마지막으로 패널 비활성화
+        gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// 초기 디자인 시점의 크기와 폰트 사이즈 캐싱
+    /// </summary>
+    private void InitializeCache()
+    {
+        if (_isInitialized) return;
+
+        if (rects != null)
+        {
+            foreach (var rt in rects)
+            {
+                if (rt == null) continue;
+
+                var data = new OriginalData { rect = rt, size = rt.sizeDelta };
+
+                // 해당 오브젝트에 텍스트가 있다면 폰트 크기도 캐싱
+                var tmp = rt.GetComponent<TextMeshProUGUI>();
+                if (tmp != null)
+                {
+                    data.fontSize = tmp.fontSize;
+                }
+
+                _cachedData.Add(data);
+            }
+        }
+        _isInitialized = true;
+    }
 
     /// <summary>
     /// 데이터를 슬롯에 바인딩해주는 메서드
@@ -31,8 +82,11 @@ public class SpiritSlotUI : MonoBehaviour
     /// <param name="data"></param>
     /// <param name="isSelected"></param>
     /// <param name="onClick"></param>
-    public void Bind(SpiritData data, bool isSelected, Action<SpiritData> onClick)
+    public void Bind(SpiritData data, bool isSelected, float slotSize, Action<SpiritData> onClick)
     {
+        // Awake가 호출되지 않았을 경우를 대비해 초기화 확인
+        InitializeCache();
+
         boundData = data;
         onClickCallback = onClick;
 
@@ -64,6 +118,30 @@ public class SpiritSlotUI : MonoBehaviour
         }
 
         UpdateVisualTheme(data);
+        // 실시간으로 계산된 슬롯 사이즈에 맞춰 내부 요소 크기 재조정
+        AdjustElementScale(slotSize);
+    }
+
+    public void AdjustElementScale(float size)
+    {
+        float referenceSize = 200f;
+        float ratio = size / referenceSize;
+
+        // 캐싱된 원본 데이터를 바탕으로 비율을 곱함 (중첩 계산 방지)
+        foreach (var data in _cachedData)
+        {
+            if (data.rect == null) continue;
+
+            // 크기(Width, Height) 조정
+            data.rect.sizeDelta = data.size * ratio;
+
+            // 텍스트인 경우 폰트 크기도 함께 조정
+            var tmp = data.rect.GetComponent<TextMeshProUGUI>();
+            if (tmp != null)
+            {
+                tmp.fontSize = data.fontSize * ratio;
+            }
+        }
     }
 
     private void UpdateVisualTheme(SpiritData data)
