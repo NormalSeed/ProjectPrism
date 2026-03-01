@@ -1,4 +1,5 @@
 ﻿using Cysharp.Threading.Tasks;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,9 +12,7 @@ public class BoardManager : MonoBehaviour, IBoardService
 {
     [Header("Layout Settings")]
     [SerializeField] private RectTransform parentRect;
-    [SerializeField] private float targetAspectRatio = 0.85f;
-
-    private RectTransform boardRect;
+    [SerializeField] private RectTransform boardRect;
     private GridLayoutGroup gridLayout;
     private int gridSize = 5;
 
@@ -27,9 +26,11 @@ public class BoardManager : MonoBehaviour, IBoardService
     [SerializeField] private int crystalCount = 2;  // 크리스탈 개수
     [SerializeField] private int maxPieces = 5;     // 사용할 수 있는 최대 기물 수
 
-    [Header("Team System")]
+    [Header("Team & Inventory System")]
     [SerializeField] private List<SpiritData> assignedSpirits = new List<SpiritData>();
-    [SerializeField] private int maxTeamSize = 3;
+    private Dictionary<PieceType, int> remainingPieces = new Dictionary<PieceType, int>();
+    private PieceType selectedPieceType = PieceType.None;
+    [SerializeField] private int maxTeamSize = 3; // 지울 필요?
 
     [Header("Interaction UI")]
     [SerializeField] Image dragGhostIcon;
@@ -44,12 +45,9 @@ public class BoardManager : MonoBehaviour, IBoardService
     private Vector2Int currentEmitterPos = new Vector2Int(-1, -1);
     private Vector2Int currentEmitterDir = Vector2Int.right;
 
-    // 인벤토리 상태
-    private PieceType selectedPieceType = PieceType.None;
-    private Dictionary<PieceType, int> remainingPieces = new Dictionary<PieceType, int>();
-
     private bool isGenerating = false;
-    private bool hasUserInteracted = false;
+
+    public event Action OnPieceCountChanged;
 
     [Inject]
     public void Construct(PuzzlePathFinder _pathFinder)
@@ -59,9 +57,10 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     private void Awake()
     {
-        boardRect = GetComponent<RectTransform>();
+        if (boardRect == null) boardRect = GetComponent<RectTransform>();
         gridLayout = GetComponent<GridLayoutGroup>();
-        if (parentRect == null) parentRect = transform.parent.GetComponent<RectTransform>();
+        if (parentRect == null && transform.parent != null)
+            parentRect = transform.parent.GetComponent<RectTransform>();
 
         tiles = GetComponentsInChildren<Tile>();
 
@@ -82,65 +81,28 @@ public class BoardManager : MonoBehaviour, IBoardService
         InitInventory();
     }
 
-    // 인벤토리 초기화 (팀 전체 기물 합산)
-    private void InitInventory()
+    // --- IBoardService 구현부 ---
+
+    public void SetTeam(List<SpiritData> team)
     {
-        remainingPieces.Clear();
-
-        // 팀원이 3마리를 초과하지 않도록 보정
-        var spiritsToProcess = assignedSpirits.Take(maxTeamSize).ToList();
-
-        foreach (var spirit in spiritsToProcess)
-        {
-            if (spirit == null) continue;
-
-            foreach (var p in spirit.startingPieces)
-            {
-                if (remainingPieces.ContainsKey(p.pieceType))
-                    remainingPieces[p.pieceType] += p.count;
-                else
-                    remainingPieces[p.pieceType] = p.count;
-            }
-        }
-        UpdateInventoryUI();
+        assignedSpirits = team;
+        InitInventory();
+        Debug.Log($"[Board] 팀 편성 완료. 현재 출전 정령: {assignedSpirits.Count}마리");
     }
 
-    private int GetTotalPieceCount()
-    {
-        int total = assignedSpirits.Take(maxTeamSize).Where(s => s != null).Sum(s => s.GetTotalPieceCount());
-        return total;
-    }
-
-    // 상호작용 로직
     public void OnPieceButtonClicked(PieceType type)
     {
         if (remainingPieces.ContainsKey(type) && remainingPieces[type] > 0)
         {
-            selectedPieceType = type;
-            Debug.Log($"[BoardManager] {type} 선택됨. 배치할 타일을 선택하세요.");
+            // 선택 토글 (이미 선택된 것을 누르면 해제)
+            selectedPieceType = (selectedPieceType == type) ? PieceType.None : type;
+            Debug.Log($"[Board] 기물 선택 상태: {selectedPieceType}");
         }
-    }
-
-    public void OnTileClicked(int x, int y)
-    {
-        if (isGenerating || currentEmitterPos.x == -1) return;
-
-        PieceType existing = currentGrid[x, y];
-
-        // 이미 기물이 있는 경우 : 회수
-        if (existing == PieceType.Mirror || existing == PieceType.Prism)
+        else
         {
-            RemovePiece(x, y, existing);
             selectedPieceType = PieceType.None;
         }
-        // 빈 칸이고 선택된 기물이 있는 경우 : 배치
-        else if (existing == PieceType.None && selectedPieceType != PieceType.None)
-        {
-            TryPlacePiece(x, y, selectedPieceType);
-            selectedPieceType = PieceType.None;
-        }
-
-        SimulateCurrentLight();
+        UpdateInventoryUI();
     }
 
     public void OnPieceDropped(Vector2 screenPos, PieceType type)
@@ -149,6 +111,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         {
             if (RectTransformUtility.RectangleContainsScreenPoint(tile.GetComponent<RectTransform>(), screenPos))
             {
+                // 드래그 드롭 시에는 해당 위치로 즉시 배치 시도
                 TryPlacePiece(tile.X, tile.Y, type);
                 break;
             }
@@ -156,13 +119,43 @@ public class BoardManager : MonoBehaviour, IBoardService
         SimulateCurrentLight();
     }
 
+    public int GetRemainingPieceCount(PieceType type)
+        => remainingPieces.ContainsKey(type) ? remainingPieces[type] : 0;
+
+    public PieceType GetSelectedPieceType() => selectedPieceType;
+
+    public void OnTileClicked(int x, int y)
+    {
+        if (isGenerating || currentEmitterPos.x == -1) return;
+
+        PieceType existing = currentGrid[x, y];
+
+        // 1. 이미 기물이 있는 경우 : 회수 (Mirror, Prism만 해당)
+        if (existing == PieceType.Mirror || existing == PieceType.Prism)
+        {
+            RemovePiece(x, y, existing);
+            // 회수 시 선택 상태를 회수한 기물로 변경하거나 None으로 초기화 (기획에 따라 선택)
+            selectedPieceType = PieceType.None;
+        }
+        // 2. 빈 칸이고 선택된 기물이 있는 경우 : 배치
+        else if (existing == PieceType.None && selectedPieceType != PieceType.None)
+        {
+            TryPlacePiece(x, y, selectedPieceType);
+            // 연속 배치를 위해 선택 상태 유지 가능 (여기서는 1회 배치 후 해제)
+            selectedPieceType = PieceType.None;
+        }
+
+        SimulateCurrentLight();
+    }
+
     public void TryPlacePiece(int x, int y, PieceType type)
     {
         if (currentGrid[x, y] != PieceType.None) return;
-        if (!remainingPieces.ContainsKey(type) || remainingPieces[type] <= 0) return;
+        if (GetRemainingPieceCount(type) <= 0) return;
 
         currentGrid[x, y] = type;
         remainingPieces[type]--;
+
         UpdateInventoryUI();
         RefreshAllTiles();
     }
@@ -176,12 +169,41 @@ public class BoardManager : MonoBehaviour, IBoardService
         RefreshAllTiles();
     }
 
+    // --- 인벤토리 로직 ---
+
+    private void InitInventory()
+    {
+        remainingPieces.Clear();
+        remainingPieces[PieceType.Mirror] = 0;
+        remainingPieces[PieceType.Prism] = 0;
+
+        // 편성된 정령(최대 3마리)의 기물 정보를 합산
+        var team = assignedSpirits.Take(3).ToList();
+        foreach (var spirit in team)
+        {
+            if (spirit == null) continue;
+            foreach (var p in spirit.startingPieces)
+            {
+                if (remainingPieces.ContainsKey(p.pieceType))
+                    remainingPieces[p.pieceType] += p.count;
+            }
+        }
+
+        selectedPieceType = PieceType.None;
+        UpdateInventoryUI();
+    }
+
     private void UpdateInventoryUI()
     {
-        if (inventoryText == null) return;
-        int m = remainingPieces.ContainsKey(PieceType.Mirror) ? remainingPieces[PieceType.Mirror] : 0;
-        int p = remainingPieces.ContainsKey(PieceType.Prism) ? remainingPieces[PieceType.Prism] : 0;
-        inventoryText.text = $"거울 : {m} | 프리즘 : {p}";
+        // 텍스트 UI 업데이트
+        if (inventoryText != null)
+        {
+            int m = GetRemainingPieceCount(PieceType.Mirror);
+            int p = GetRemainingPieceCount(PieceType.Prism);
+            inventoryText.text = $"거울 : {m} | 프리즘 : {p}";
+        }
+
+        OnPieceCountChanged?.Invoke();
     }
 
     public void SetDragGhost(bool active, Sprite sprite = null)
@@ -200,12 +222,8 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     public Vector3 GetWorldPosition(int x, int y)
     {
-        // Grid Layout Group의 순서대로 자식 오브젝트가 배치되어 있다고 가정
-        int index = (y * gridSize) + x;
-        if (index < transform.childCount)
-        {
-            return tiles[index].transform.position;
-        }
+        Tile tile = GetTile(x, y);
+        if (tile != null) return tile.transform.position;
 
         return transform.position;
     }
@@ -220,6 +238,7 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     public void UpdateBoardLayOut()
     {
+        if (boardRect == null || gridLayout == null) return;
         float boardSize = boardRect.rect.width;
         float totalPadding = gridLayout.padding.left + gridLayout.padding.right;
         float totalSpacing = gridLayout.spacing.x * (gridSize - 1);
@@ -258,9 +277,7 @@ public class BoardManager : MonoBehaviour, IBoardService
     {
         if (isGenerating) return;
 
-        //int totalAvailablePieces = GetTotalPieceCount();
-        // TODO: 정령과 인벤토리 로직이 완성되면 totalAvailablePieces를 GetTotalPieceCount 메서드를 이용해 설정해야 함
-        int totalAvailablePieces = 5;   // 테스트를 위해 기물 수를 5로 설정
+        int totalAvailablePieces = GetTotalPieceCount();
         if (totalAvailablePieces <= 0)
         {
             Debug.LogError("[BoardManager] 배치된 정령의 기물이 0개입니다. 정령을 먼저 설정하세요.");
@@ -268,8 +285,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         }
 
         isGenerating = true;
-        generateBoardButton.interactable = false;   // 생성 중 버튼 비활성화
-
+        if (generateBoardButton != null) generateBoardButton.interactable = false;    // 생성 중 버튼 비활성화
         lightBeamRenderer.positionCount = 0;    // 이전 선 지우기
 
         Debug.Log("스테이지 생성 중...");
@@ -314,7 +330,7 @@ public class BoardManager : MonoBehaviour, IBoardService
             for (int i = 0; i < crystalCount; i++)
             {
                 Vector2Int cPos = nonDirectPosList[i];
-                int hits = Random.Range(1, 3);
+                int hits = UnityEngine.Random.Range(1, 3);
                 tempCrystals.Add(new CrystalData { Position = cPos, RequiredHits = hits });
                 originalHits.Add(hits);
                 shuffledPos.Remove(cPos);
@@ -387,7 +403,8 @@ public class BoardManager : MonoBehaviour, IBoardService
             SimulateCurrentLight();
         }
 
-        generateBoardButton.interactable = true;
+        InitInventory();
+        if (generateBoardButton != null) generateBoardButton.interactable = true;
         isGenerating = false;
     }
 
@@ -475,6 +492,12 @@ public class BoardManager : MonoBehaviour, IBoardService
         CheckWinCondition();
     }
 
+    private int GetTotalPieceCount()
+    {
+        int total = assignedSpirits.Take(maxTeamSize).Where(s => s != null).Sum(s => s.GetTotalPieceCount());
+        return total;
+    }
+
     private void CheckWinCondition()
     {
         if (currentCrystals.Count > 0 && currentCrystals.All(c => c.IsSatisfied))
@@ -522,7 +545,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         // Fisher-Yates 셔플 알고리즘
         for (int i = positions.Count - 1; i > 0; i--)
         {
-            int rnd = Random.Range(0, i + 1);
+            int rnd = UnityEngine.Random.Range(0, i + 1);
             Vector2Int temp = positions[i];
             positions[i] = positions[rnd];
             positions[rnd] = temp;
@@ -535,10 +558,5 @@ public class BoardManager : MonoBehaviour, IBoardService
         // 모든 타일 초기화
         foreach (var tile in tiles) tile.ResetTile();
         RefreshAllTiles();
-    }
-
-    public void SetTeam(List<SpiritData> team)
-    {
-        assignedSpirits = team;
     }
 }

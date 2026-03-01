@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,6 +10,8 @@ public class SpiritInventoryUI : MonoBehaviour
     [Header("Layout")]
     [SerializeField] private RectTransform slotContainerRect;   // 정령 슬롯이 배치될 부모 객체
     [SerializeField] private SpiritSlotUI slotPrefab;           // 개별 정령 슬롯 프리팹
+    [SerializeField] private Button closeButton;                // 닫힘 버튼
+    [SerializeField] private GameObject inventoryPanel;         // 닫힘 버튼으로 끄게 될 패널
 
     private GridLayoutGroup gridLayout;
     private const int columns = 4;
@@ -18,6 +21,9 @@ public class SpiritInventoryUI : MonoBehaviour
     [SerializeField] private Button startButton;                // 게임 시작 버튼
 
     private IInventoryService inventoryService;
+
+    // 생성된 슬롯 컴포넌트들을 담아두는 리스트
+    private readonly List<SpiritSlotUI> cachedSlotComponents = new List<SpiritSlotUI>();
 
     [Inject]
     public void Construct(IInventoryService _inventoryService)
@@ -50,6 +56,8 @@ public class SpiritInventoryUI : MonoBehaviour
         {
             startButton.onClick.AddListener(OnStartButtonClicked);
         }
+
+        closeButton.onClick.AddListener(OnCloseButtonClicked);
     }
 
     private void OnDestroy()
@@ -93,27 +101,32 @@ public class SpiritInventoryUI : MonoBehaviour
         var ownedSpirits = inventoryService.GetOwnedSpirits();
         int spiritCount = ownedSpirits.Count;
 
-        // 1. 기존 슬롯 중 부족한 만큼 생성하거나, 남는 것은 비활성화
-        int currentChildCount = slotContainerRect.childCount;
-
-        // 필요한 만큼 슬롯 활성화 및 바인딩
+        // 1. 필요한 만큼 슬롯 생성 및 재사용
         for (int i = 0; i < spiritCount; i++)
         {
             SpiritSlotUI slot;
 
-            if (i < currentChildCount)
+            if (i < cachedSlotComponents.Count)
             {
-                // 기존 오브젝트 재사용
+                // 캐시된 리스트에서 가져옴
+                slot = cachedSlotComponents[i];
+            }
+            else if (i < slotContainerRect.childCount)
+            {
+                // 리스트에는 없지만 오브젝트가 있다면 가져와서 캐싱
                 slot = slotContainerRect.GetChild(i).GetComponent<SpiritSlotUI>();
-                slot.gameObject.SetActive(true);
+                cachedSlotComponents.Add(slot);
             }
             else
             {
-                // 모자라면 새로 생성
+                // 오브젝트도 없다면 새로 생성하고 캐싱
                 slot = Instantiate(slotPrefab, slotContainerRect);
+                cachedSlotComponents.Add(slot);
             }
 
-            // 데이터 바인딩
+            // 오브젝트 활성화 및 데이터 바인딩
+            slot.gameObject.SetActive(true);
+
             var spiritData = ownedSpirits[i];
             bool isSelected = inventoryService.IsSpiritSelected(spiritData);
 
@@ -123,13 +136,13 @@ public class SpiritInventoryUI : MonoBehaviour
             });
         }
 
-        // 2. 남는 슬롯들은 비활성화 처리
+        // 2. 데이터 개수보다 많은 남은 오브젝트들은 비활성화 처리
         for (int i = spiritCount; i < slotContainerRect.childCount; i++)
         {
             slotContainerRect.GetChild(i).gameObject.SetActive(false);
         }
 
-        // 3. 상태 UI 업데이트
+        // 3. 하단 상태 정보 업데이트
         UpdateStatusUI();
     }
 
@@ -156,5 +169,10 @@ public class SpiritInventoryUI : MonoBehaviour
     {
         Debug.Log($"[InventoryUI] {inventoryService.CurrentTeamCount}마리의 정령과 함께 게임을 시작합니다.");
         // TODO: 실제 게임 씬으로 넘어가거나 BoardManager의 스테이지 생성을 트리거하는 로직 구현 필요
+    }
+
+    private void OnCloseButtonClicked()
+    {
+        inventoryPanel.SetActive(false);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,14 +10,16 @@ using UnityEngine.UI;
 public class SpiritSlotUI : MonoBehaviour
 {
     [Header("UI Elements")]
-    [SerializeField] private Image iconImage;
-    [SerializeField] private Image rarityBg;
-    [SerializeField] private TextMeshProUGUI nameText;
-    [SerializeField] private TextMeshProUGUI rarityText;
+    [SerializeField] private Image iconImage;               // 정령 아이콘
+    [SerializeField] private Image rarityBg;                // 등급별 배경색 이미지
+    [SerializeField] private Image typeIcon;                // 속성 아이콘
+    [SerializeField] private TextMeshProUGUI nameText;      // 정령 이름
+    [SerializeField] private TextMeshProUGUI rarityText;    // 성급(★)
     [SerializeField] private GameObject selectionOverlay;   // 선택된 상태를 나타내는 하이라이트 효과
 
     [Header("Stats")]
     [SerializeField] private TextMeshProUGUI atkText;
+    [SerializeField] private TextMeshProUGUI defText;
     [SerializeField] private TextMeshProUGUI pieceInfoText; // TODO: 텍스트가 아니라 이미지 + 텍스트 형식으로 바꿔줘야 함
 
     private SpiritData boundData;
@@ -35,27 +38,71 @@ public class SpiritSlotUI : MonoBehaviour
 
         nameText.text = data.spiritName;
         iconImage.sprite = data.spiritIcon;
-        rarityText.text = $"{(int)data.rarity}★";
+        rarityText.text = new string('★', (int)data.rarity);
         atkText.text = $"ATK: {data.atk}";
+        defText.text = $"DEF: {data.def}";
 
         // 기물 정보 요약 표시
         // TODO: 아이콘 추가 필요함
-        string pieces = string.Join(", ", data.startingPieces.ConvertAll(p => $"{p.pieceType} x{p.count}"));
-        pieceInfoText.text = pieces;
+        if (data.startingPieces != null && data.startingPieces.Count > 0)
+        {
+            // Mirror 2, Prism 1 형식으로 한 줄 요약
+            string info = string.Join(", ", data.startingPieces
+                .Where(p => p.count > 0)
+                .Select(p => $"{p.pieceType} x{p.count}"));
+            pieceInfoText.text = string.IsNullOrEmpty(info) ? "기물 없음" : info;
+        }
+        else
+        {
+            pieceInfoText.text = "기물 없음";
+        }
 
         // 선택 상태 업데이트
-        selectionOverlay.SetActive(isSelected);
+        if (selectionOverlay != null)
+        {
+            selectionOverlay.SetActive(isSelected);
+        }
 
-        // 레어도에 따른 배경색 변경
+        UpdateVisualTheme(data);
+    }
+
+    private void UpdateVisualTheme(SpiritData data)
+    {
+        // 레어도 배경색 (테두리나 베이스 배경)
         if (rarityBg != null)
         {
-            rarityBg.color = data.rarity switch
-            {
-                SpiritRarity.FiveStars => new Color(1f, 0.85f, 0.4f), // 골드
-                SpiritRarity.FourStars => new Color(0.7f, 0.5f, 1f),   // 퍼플
-                _ => Color.white
-            };
+            rarityBg.color = GetRarityColor(data.rarity);
         }
+
+        // 속성별 아이콘 색상 혹은 슬롯 포인트 색상 설정
+        if (typeIcon != null)
+        {
+            typeIcon.color = GetTypeColor(data.type);
+        }
+    }
+
+    private Color GetRarityColor(SpiritRarity rarity)
+    {
+        return rarity switch
+        {
+            SpiritRarity.FiveStars => new Color(1f, 0.84f, 0f, 0.9f),   // 금색
+            SpiritRarity.FourStars => new Color(0.75f, 0.4f, 1f, 0.9f), // 보라색
+            SpiritRarity.ThreeStars => new Color(0.3f, 0.6f, 1f, 0.9f), // 파란색
+            _ => Color.white
+        };
+    }
+
+    private Color GetTypeColor(SpiritType type)
+    {
+        return type switch
+        {
+            SpiritType.Flame => new Color(1f, 0.3f, 0.3f),  // 빨강
+            SpiritType.Aqua => new Color(0.3f, 0.7f, 1f),   // 파랑
+            SpiritType.Nature => new Color(0.4f, 0.9f, 0.4f), // 초록
+            SpiritType.Light => new Color(1f, 1f, 0.7f),    // 노랑/백색
+            SpiritType.Dark => new Color(0.5f, 0.2f, 0.7f),  // 보라/검정
+            _ => Color.white
+        };
     }
 
     /// <summary>

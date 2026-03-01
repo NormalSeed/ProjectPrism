@@ -5,10 +5,16 @@ public class BoardLifetimeScope : LifetimeScope
 {
     protected override void Configure(IContainerBuilder builder)
     {
+        // 퍼즐 서비스 등록
         builder.Register<AstarSolver>(Lifetime.Singleton);
         builder.Register<PuzzlePathFinder>(Lifetime.Singleton);
 
+        // 핵심 로직 매니저 등록
         builder.RegisterComponentInHierarchy<BoardManager>().As<IBoardService>();
         builder.RegisterComponentInHierarchy<SpiritInventoryManager>().As<IInventoryService>();
+
+        // UI 컨트롤러 등록
+        builder.RegisterComponentInHierarchy<SpiritInventoryUI>();
+        builder.RegisterComponentInHierarchy <PieceSelectorUI>();
     }
 }
