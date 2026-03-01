@@ -9,4 +9,6 @@ public interface IInventoryService
     List<SpiritData> GetOwnedSpirits();
     bool IsSpiritSelected(SpiritData spirit);
     int CurrentTeamCount { get; }
+
+    void LoadOwnedSpirits(List<SpiritData> spirits);    // 데이터 로드 메서드 추가
 }

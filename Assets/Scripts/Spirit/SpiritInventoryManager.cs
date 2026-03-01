@@ -73,4 +73,12 @@ public class SpiritInventoryManager : MonoBehaviour, IInventoryService
     public bool IsSpiritSelected(SpiritData spirit) => selectedTeam.Contains(spirit);
 
     public int CurrentTeamCount => selectedTeam.Count;
+
+    // 데이터 로드용 메서드
+    public void LoadOwnedSpirits(List<SpiritData> spirits)
+    {
+        allOwnedSpirits = new List<SpiritData>(spirits);
+        OnInventoryUpdated?.Invoke();
+        Debug.Log($"[Inventory] {allOwnedSpirits.Count}개의 정령 데이터를 로드함.");
+    }
 }
