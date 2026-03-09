@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -31,6 +32,7 @@ public class BoardManager : MonoBehaviour, IBoardService
     private Dictionary<PieceType, int> remainingPieces = new Dictionary<PieceType, int>();
     private PieceType selectedPieceType = PieceType.None;
     [SerializeField] private int maxTeamSize = 3; // 지울 필요?
+    [SerializeField] List<Image> spiritIcons = new List<Image>();
 
     [Header("Interaction UI")]
     [SerializeField] Image dragGhostIcon;
@@ -41,6 +43,8 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     // 게임 상태 데이터
     private PieceType[,] currentGrid = new PieceType[5, 5];
+    private int[,] currentOrientations = new int[5, 5]; // 0 또는 1
+
     private List<CrystalData> currentCrystals = new List<CrystalData>();
     private Vector2Int currentEmitterPos = new Vector2Int(-1, -1);
     private Vector2Int currentEmitterDir = Vector2Int.right;
@@ -72,6 +76,20 @@ public class BoardManager : MonoBehaviour, IBoardService
         yield return null;
         UpdateBoardLayOut();
 
+        if (tiles != null && tiles.Length > 0)
+        {
+            for (int i = 0; i < tiles.Length; i++)
+            {
+                // 인덱스를 기반으로 x, y 좌표 계산 (5x5 그리드 기준)
+                int x = i % gridSize;
+                int y = i / gridSize;
+
+                // 각 타일에 좌표와 클릭 시 실행될 메서드 전달
+                tiles[i].Init(x, y, OnTileClicked);
+            }
+            Debug.Log($"[Board] {tiles.Length}개의 타일 상호작용 연결 완료.");
+        }
+
         // 버튼에 리스너 등록 시 중복 등록 방지
         generateBoardButton.onClick.AddListener(() =>
         {
@@ -79,6 +97,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         });
 
         InitInventory();
+        
     }
 
     // --- IBoardService 구현부 ---
@@ -87,6 +106,7 @@ public class BoardManager : MonoBehaviour, IBoardService
     {
         assignedSpirits = team;
         InitInventory();
+        UpdateSpiritIcons(team);
         Debug.Log($"[Board] 팀 편성 완료. 현재 출전 정령: {assignedSpirits.Count}마리");
     }
 
@@ -133,15 +153,25 @@ public class BoardManager : MonoBehaviour, IBoardService
         // 1. 이미 기물이 있는 경우 : 회수 (Mirror, Prism만 해당)
         if (existing == PieceType.Mirror || existing == PieceType.Prism)
         {
-            RemovePiece(x, y, existing);
-            // 회수 시 선택 상태를 회수한 기물로 변경하거나 None으로 초기화 (기획에 따라 선택)
+            // 방향 전환 시도 (0에서 1로)
+            if (currentOrientations[x, y] == 0)
+            {
+                currentOrientations[x, y] = 1;
+                Debug.Log($"[Board] ({x}, {y}) 기물 방향 전환: 1");
+            }
+            else
+            {
+                // 이미 방향이 1이면 다시 누를 때 회수
+                RemovePiece(x, y, existing);
+                // 방향 초기화
+                currentOrientations[x, y] = 0;
+            }
             selectedPieceType = PieceType.None;
         }
         // 2. 빈 칸이고 선택된 기물이 있는 경우 : 배치
         else if (existing == PieceType.None && selectedPieceType != PieceType.None)
         {
             TryPlacePiece(x, y, selectedPieceType);
-            // 연속 배치를 위해 선택 상태 유지 가능 (여기서는 1회 배치 후 해제)
             selectedPieceType = PieceType.None;
         }
 
@@ -193,6 +223,11 @@ public class BoardManager : MonoBehaviour, IBoardService
         UpdateInventoryUI();
     }
 
+    public SpiritData GetPrimarySpirit()
+    {
+        return assignedSpirits.Count > 0 ? assignedSpirits[0] : null;
+    }
+
     private void UpdateInventoryUI()
     {
         // 텍스트 UI 업데이트
@@ -204,6 +239,31 @@ public class BoardManager : MonoBehaviour, IBoardService
         }
 
         OnPieceCountChanged?.Invoke();
+    }
+
+    private void UpdateSpiritIcons(List<SpiritData> team)
+    {
+        foreach (Image icon in spiritIcons)
+        {
+            if (icon == null) continue;
+
+            Color c = icon.color;
+            c.a = 0f;
+            icon.color = c;
+        }
+
+        for (int i = 0; i < team.Count; i++)
+        {
+            if (i >= spiritIcons.Count) break;
+
+            if (spiritIcons[i] == null || team[i] == null) continue;
+
+            spiritIcons[i].sprite = team[i].spiritIcon;
+
+            Color c = spiritIcons[i].color;
+            c.a = 1f;
+            spiritIcons[i].color = c;
+        }
     }
 
     public void SetDragGhost(bool active, Sprite sprite = null)
@@ -249,26 +309,31 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     public void DrawLightPath(List<Vector2Int> route)
     {
-        // 경로가 없거나 비어있으면 선 삭제
-        if (route == null || route.Count == 0)
+        if (lightBeamRenderer == null) return;
+
+        if (route == null || route.Count < 1)
         {
             lightBeamRenderer.positionCount = 0;
             return;
         }
 
-        // LineRenderer가 그릴 점의 개수 설정
+        // 경로의 수만큼 정점 설정
         lightBeamRenderer.positionCount = route.Count;
 
-        // 경로의 각 그리드 좌표를 월드 좌표로 변환하여 선의 정점으로 설정
         for (int i = 0; i < route.Count; i++)
         {
+            // 타일의 월드 좌표를 가져옴
             Vector3 worldPos = GetWorldPosition(route[i].x, route[i].y);
 
-            // UI와 겹치지 않게 Z축을 살짝 앞으로 당겨줌
-            worldPos.z = -1f;
+            // UI 레이어보다 앞으로 나오도록 Z축 오프셋 적용
+            worldPos.z = lightZOffset;
 
             lightBeamRenderer.SetPosition(i, worldPos);
         }
+
+        // 궤적이 끊기지 않고 부드럽게 보이도록 설정
+        lightBeamRenderer.startWidth = 0.15f;
+        lightBeamRenderer.endWidth = 0.15f;
 
         Debug.Log($"[Viz] 빛 경로 그리기 완료. 총 {route.Count}개의 지점 연결.");
     }
@@ -464,7 +529,8 @@ public class BoardManager : MonoBehaviour, IBoardService
             var crystal = currentCrystals.Find(c => c.Position == currPos);
             if (crystal != null) crystal.CurrentHits++;
 
-            PieceType type = currentGrid[currPos.x, currPos.y];
+            PieceType type = currentGrid[currPos.x, currPos.y];         // 타일의 Piece 정보
+            int orient = currentOrientations[currPos.x, currPos.y];     // 현재 방향
 
             // 장애물에 막힘
             if (type == PieceType.Obstacle) break;
@@ -472,14 +538,33 @@ public class BoardManager : MonoBehaviour, IBoardService
             // 유저가 배치한 Mirror/Prism에 따른 방향 전환 로직
             if (type == PieceType.Mirror)
             {
-                // 거울 반사: 90도 회전 (대각선 거울)
-                currDir = new Vector2Int(-currDir.y, -currDir.x);
+                // 거울 반사: 90도 회전
+                if (orient == 0) // [/] 형태 거울
+                {
+                    // (1,0) -> (0,1) | (0,-1) -> (-1,0) ...
+                    currDir = new Vector2Int(-currDir.y, -currDir.x);
+                }
+                else // [\] 형태 거울
+                {
+                    // (1,0) -> (0,-1) | (0,1) -> (-1,0) ...
+                    currDir = new Vector2Int(currDir.y, currDir.x);
+                }
             }
             else if (type == PieceType.Prism)
             {
-                // 프리즘 굴절: 45도 굴절 (Cardinals to Diagonals)
-                Vector2Int newDir = currDir + new Vector2Int(currDir.y == 0 ? 0 : currDir.x, currDir.x == 0 ? 0 : currDir.y);
-                currDir = new Vector2Int(Mathf.Clamp(newDir.x, -1, 1), Mathf.Clamp(newDir.y, -1, 1));
+                // 프리즘 굴절: 45도 굴절
+                Vector2Int rotationOffset;
+                if (orient == 0) // 시계 반대방향 45도
+                    rotationOffset = new Vector2Int(-currDir.y, currDir.x);
+                else             // 시계방향 45도
+                    rotationOffset = new Vector2Int(currDir.y, -currDir.x);
+
+                // 현재 방향 + 직교 방향 = 대각선(45도) 방향
+                currDir += rotationOffset;
+
+                // 방향 정규화 (-1, 0, 1)
+                currDir.x = Mathf.Clamp(currDir.x, -1, 1);
+                currDir.y = Mathf.Clamp(currDir.y, -1, 1);
             }
 
             // 굴절 후 방향이 0이 되면 중단
@@ -515,9 +600,10 @@ public class BoardManager : MonoBehaviour, IBoardService
 
                 PieceType type = currentGrid[x, y];
                 CrystalData cryData = currentCrystals.Find(c => c.Position == new Vector2Int(x, y));
+                int orientation = currentOrientations[x, y];
                 Vector2Int? eDir = (new Vector2Int(x, y) == currentEmitterPos) ? (Vector2Int?)currentEmitterDir : null;
 
-                tile.SetState(type, cryData, eDir);
+                tile.SetState(type, cryData, eDir, orientation);
             }
         }
     }

@@ -18,7 +18,7 @@ public class SpiritInventoryUI : MonoBehaviour
     private float slotSize;
 
     [Header("Status UI")]
-    [SerializeField] private TextMeshProUGUI teamCountText;    // 팀 편성 인원 표시
+    [SerializeField] private TextMeshProUGUI teamCountText;     // 팀 편성 인원 표시
     [SerializeField] private Button startButton;                // 게임 시작 버튼
 
     private CanvasGroup group;
@@ -29,7 +29,7 @@ public class SpiritInventoryUI : MonoBehaviour
     private readonly List<SpiritSlotUI> cachedSlotComponents = new List<SpiritSlotUI>();
 
     [Inject]
-    public void Construct(IInventoryService _inventoryService)
+    public void Construct(IInventoryService _inventoryService, IBoardService _boardService)
     {
         inventoryService = _inventoryService;
     }
@@ -164,7 +164,7 @@ public class SpiritInventoryUI : MonoBehaviour
     {
         if (teamCountText != null)
         {
-            teamCountText.text = $"편성된 정령 : {inventoryService.CurrentTeamCount} / 3";
+            teamCountText.text = $"Team Count : {inventoryService.CurrentTeamCount} / 3";
         }
 
         if (startButton != null)

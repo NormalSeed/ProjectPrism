@@ -1,44 +1,57 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using VContainer;
 
 public class PieceSelectorUI : MonoBehaviour
 {
-    [Header("References")]
-    [SerializeField] private BoardManager boardManager;
-    [SerializeField] private Transform container;
-    [SerializeField] private PieceButtonUI pieceButtonPrefab;
+    [Header("Piece Buttons")]
+    [SerializeField] private List<PieceButtonUI> pieceButtons = new List<PieceButtonUI>();
 
-    [Header("Piece Icons")]
-    [SerializeField] private Sprite mirrorIcon;
-    [SerializeField] private Sprite prismIcon;
+    private IBoardService boardService;
 
-    private List<PieceButtonUI> spawnedButtons = new List<PieceButtonUI>();
+    [Inject]
+    public void Construct(IBoardService _boardService)
+    {
+        boardService = _boardService;
+    }
+
+    private void Start()
+    {
+        // 만약 인스펙터에서 할당하지 않았다면 자식 오브젝트에서 자동으로 찾아옵니다.
+        if (pieceButtons == null || pieceButtons.Count == 0)
+        {
+            pieceButtons = new List<PieceButtonUI>(GetComponentsInChildren<PieceButtonUI>());
+        }
+
+        if (boardService != null)
+        {
+            // 보드 데이터(정령 편성, 기물 개수 등)가 변경될 때 호출될 이벤트 구독
+            boardService.OnPieceCountChanged += RefreshAllButtons;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (boardService != null)
+        {
+            boardService.OnPieceCountChanged -= RefreshAllButtons;
+        }
+    }
 
     /// <summary>
-    /// 현재 남은 기물 상태에 따라 버튼 리스트를 갱신하는 메서드
+    /// 관리 중인 모든 버튼의 상태(개수, interactable, 선택 효과)를 갱신합니다.
     /// </summary>
-    public void Refresh(Dictionary<PieceType, int> remainingPieces, PieceType selectedType)
+    public void RefreshAllButtons()
     {
-        // 간단한 구현을 위해 전체 삭제 후 다시 생성 (풀링 권장)
-        foreach (var btn in spawnedButtons) Destroy(btn.gameObject);
-        spawnedButtons.Clear();
-
-        foreach (var pair in remainingPieces)
+        foreach (var btn in pieceButtons)
         {
-            if (pair.Value <= 0 && pair.Key != selectedType) continue;
-            if (pair.Key != PieceType.Mirror && pair.Key != PieceType.Prism) continue;
-
-            var newBtn = Instantiate(pieceButtonPrefab, container);
-            Sprite icon = (pair.Key == PieceType.Mirror) ? mirrorIcon : prismIcon;
-
-            // 버튼 초기화
-            newBtn.Setup(pair.Key, pair.Value, icon, (type) => {
-                boardManager.OnPieceButtonClicked(type);
-            });
-
-            // 선택 상태 표시
-            newBtn.SetSelection(pair.Key == selectedType);
-            spawnedButtons.Add(newBtn);
+            if (btn != null)
+            {
+                // 각 버튼 내부에 구현된 RefreshStatus()를 호출하게 하거나,
+                // 버튼이 스스로 이벤트를 구독하고 있다면 이 메서드는 생략 가능합니다.
+                // 여기서는 확실한 갱신을 위해 명시적으로 호출할 수 있게 설계합니다.
+                btn.RefreshStatus();
+            }
         }
     }
 }

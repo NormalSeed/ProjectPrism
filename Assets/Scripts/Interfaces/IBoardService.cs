@@ -18,6 +18,10 @@ public interface IBoardService
     void OnPieceDropped(Vector2 screenPos, PieceType type);
     int GetRemainingPieceCount(PieceType type);
     PieceType GetSelectedPieceType();
+
+    // HUD에서 현재 팀 정령 아이콘을 가져오기 위한 메서드
+    SpiritData GetPrimarySpirit();
+
     // 기물 버튼이 개수 변화를 감지하기 위한 이벤트
     event Action OnPieceCountChanged;
 }

@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 public enum PieceType { None, Mirror, Prism, Obstacle, Emitter, Crystal }
 
-public class Tile : MonoBehaviour
+public class Tile : MonoBehaviour, IPointerClickHandler
 {
     [Header("Icons")]
     [SerializeField] private GameObject obstacleIcon;
@@ -21,7 +21,9 @@ public class Tile : MonoBehaviour
     [SerializeField] private Color normalColor = Color.white;
     [SerializeField] private Color satisfiedColor = Color.green;
 
-    public int X, Y;
+    public int X { get; private set; }
+    public int Y { get; private set; }
+
     private PieceType currentType = PieceType.None;
     private Action<int, int> onClickCallback;
 
@@ -32,7 +34,7 @@ public class Tile : MonoBehaviour
         onClickCallback = onClick;
     }
 
-    public void SetState(PieceType type, CrystalData crystal = null, Vector2Int? dir = null)
+    public void SetState(PieceType type, CrystalData crystal = null, Vector2Int? dir = null, int orientation = 0)
     {
         currentType = type;
 
@@ -43,6 +45,16 @@ public class Tile : MonoBehaviour
         mirrorIcon.SetActive(type == PieceType.Mirror);
         prismIcon.SetActive(type == PieceType.Prism);
 
+        // 거울/프리즘 방향 회전 적용
+        if (type == PieceType.Mirror || type == PieceType.Prism)
+        {
+            GameObject targetIcon = (type == PieceType.Mirror) ? mirrorIcon : prismIcon;
+            // orientation이 0이면 y 스케일 1 (정상), 1이면 y 스케일 -1 (위아래 반전)
+            float yStack = (orientation == 0) ? 1f : -1f;
+            targetIcon.transform.localScale = new Vector3(1f, yStack, 1f);
+        }
+
+        // 크리스탈 텍스트 및 배경 처리
         if (type == PieceType.Crystal && crystal != null)
         {
             // 목표치에서 현재 횟수를 뺀 '남은 횟수'를 표시
