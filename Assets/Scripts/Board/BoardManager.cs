@@ -38,7 +38,6 @@ public class BoardManager : MonoBehaviour, IBoardService
     [SerializeField] TextMeshProUGUI inventoryText;
 
     [SerializeField] private Tile[] tiles;
-    private PuzzlePathFinder pathFinder;
 
     // 게임 상태 데이터
     private PieceType[,] currentGrid = new PieceType[5, 5];
@@ -52,10 +51,14 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     public event Action OnPieceCountChanged;
 
+    private PuzzlePathFinder pathFinder;
+    private IGameService gameService;
+
     [Inject]
-    public void Construct(PuzzlePathFinder _pathFinder)
+    public void Construct(PuzzlePathFinder _pathFinder, IGameService _gameService)
     {
         pathFinder = _pathFinder;
+        gameService = _gameService;
     }
 
     private void Awake()
@@ -74,6 +77,14 @@ public class BoardManager : MonoBehaviour, IBoardService
     {
         yield return null;
         UpdateBoardLayOut();
+        
+        if (gameService != null)
+        {
+            gameService.OnStageChanged += (newStage) =>
+            {
+                CreateNewStageAsync().Forget();
+            };
+        }
 
         if (tiles != null && tiles.Length > 0)
         {
@@ -521,7 +532,15 @@ public class BoardManager : MonoBehaviour, IBoardService
     private void CheckWinCondition()
     {
         if (currentCrystals.Count > 0 && currentCrystals.All(c => c.IsSatisfied))
-            Debug.Log("<color=cyan>[Game] 스테이지 클리어!</color>");
+        {
+            Debug.Log("<color=cyan>[Game] 모든 크리스탈 활성화 완료!</color>");
+
+            // 게임 매니저에게 클리어 알림 전달
+            if (gameService != null)
+            {
+                gameService.CompleteStage();
+            }
+        }
     }
 
     private void RefreshAllTiles()

@@ -13,6 +13,7 @@ public class BoardLifetimeScope : LifetimeScope
         builder.Register<PuzzlePathFinder>(Lifetime.Singleton);
 
         // 핵심 로직 매니저 등록
+        builder.RegisterComponentInHierarchy<GameManager>().As<IGameService>();
         builder.RegisterComponentInHierarchy<BoardManager>().As<IBoardService>();
         builder.RegisterComponentInHierarchy<SpiritInventoryManager>().As<IInventoryService>();
 

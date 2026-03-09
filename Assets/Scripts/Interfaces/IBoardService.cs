@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Cysharp.Threading.Tasks;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -21,6 +22,7 @@ public interface IBoardService
 
     // HUD에서 현재 팀 정령 아이콘을 가져오기 위한 메서드
     SpiritData GetPrimarySpirit();
+    UniTaskVoid CreateNewStageAsync();
 
     // 기물 버튼이 개수 변화를 감지하기 위한 이벤트
     event Action OnPieceCountChanged;
