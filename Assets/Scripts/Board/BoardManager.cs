@@ -307,37 +307,6 @@ public class BoardManager : MonoBehaviour, IBoardService
         gridLayout.cellSize = new Vector2(finalCellSize, finalCellSize);
     }
 
-    public void DrawLightPath(List<Vector2Int> route)
-    {
-        if (lightBeamRenderer == null) return;
-
-        if (route == null || route.Count < 1)
-        {
-            lightBeamRenderer.positionCount = 0;
-            return;
-        }
-
-        // 경로의 수만큼 정점 설정
-        lightBeamRenderer.positionCount = route.Count;
-
-        for (int i = 0; i < route.Count; i++)
-        {
-            // 타일의 월드 좌표를 가져옴
-            Vector3 worldPos = GetWorldPosition(route[i].x, route[i].y);
-
-            // UI 레이어보다 앞으로 나오도록 Z축 오프셋 적용
-            worldPos.z = lightZOffset;
-
-            lightBeamRenderer.SetPosition(i, worldPos);
-        }
-
-        // 궤적이 끊기지 않고 부드럽게 보이도록 설정
-        lightBeamRenderer.startWidth = 0.15f;
-        lightBeamRenderer.endWidth = 0.15f;
-
-        Debug.Log($"[Viz] 빛 경로 그리기 완료. 총 {route.Count}개의 지점 연결.");
-    }
-
     public async UniTaskVoid CreateNewStageAsync()
     {
         if (isGenerating) return;
@@ -351,7 +320,6 @@ public class BoardManager : MonoBehaviour, IBoardService
 
         isGenerating = true;
         if (generateBoardButton != null) generateBoardButton.interactable = false;    // 생성 중 버튼 비활성화
-        lightBeamRenderer.positionCount = 0;    // 이전 선 지우기
 
         Debug.Log("스테이지 생성 중...");
 
@@ -382,6 +350,7 @@ public class BoardManager : MonoBehaviour, IBoardService
             startPos = shuffledPos[0];
             shuffledPos.RemoveAt(0);
             startDir = GetValidStartDir(startPos);
+            tempGenGrid[startPos.x, startPos.y] = 3;
 
             // shuffledPos에서 광원 앞 칸을 찾아 제거하여 장애물이나 크리스탈이 놓이지 않게 함
             Vector2Int nextToEmitterPos = startPos + startDir;
@@ -397,11 +366,9 @@ public class BoardManager : MonoBehaviour, IBoardService
                 Vector2Int cPos = nonDirectPosList[i];
                 int hits = UnityEngine.Random.Range(1, 3);
                 tempCrystals.Add(new CrystalData { Position = cPos, RequiredHits = hits });
+                tempGenGrid[cPos.x, cPos.y] = 2;
                 originalHits.Add(hits);
                 shuffledPos.Remove(cPos);
-
-                // PuzzlePathFinder에게 이 자리는 "기물 설치 불가능"임을 알리기 위해 그리드에 마킹 (2 = Crystal)
-                tempGenGrid[cPos.x, cPos.y] = 2;
             }
 
             // 장애물 배치
@@ -458,13 +425,8 @@ public class BoardManager : MonoBehaviour, IBoardService
                 currentGrid[cry.Position.x, cry.Position.y] = PieceType.Crystal;
             }
 
-            Debug.Log($"{attemptCount}번의 시도 끝에 맵을 찾았습니다.");
-
             // 시각화 업데이트
             ApplyStageToUI();
-
-            Debug.Log($"{attemptCount}번의 시도 끝에 맵을 찾았습니다.");
-
             SimulateCurrentLight();
         }
 
@@ -496,83 +458,57 @@ public class BoardManager : MonoBehaviour, IBoardService
     {
         if (currentEmitterPos.x == -1) return;
 
-        // 모든 크리스탈의 현재 히트 초기화
+        foreach (var tile in tiles) tile.ClearLight();
         foreach (var cry in currentCrystals) cry.CurrentHits = 0;
 
-        List<Vector2Int> path = new List<Vector2Int> { currentEmitterPos };
         Vector2Int currPos = currentEmitterPos;
         Vector2Int currDir = currentEmitterDir;
 
-        // 방향이 0이면 진행 불가
-        if (currDir == Vector2Int.zero)
-        {
-            Debug.LogError("[BoardManager] 광원의 발사 방향이 (0,0)입니다. 설정을 확인하세요.");
-            DrawLightPath(path);
-            RefreshAllTiles();
-            return;
-        }
-
-        // 빛 추적 (최대 25칸까지만 순회)
-        int safetyIndex = gridSize * gridSize * 2;
+        int safetyIndex = 100;
         while (safetyIndex-- > 0)
         {
-            Vector2Int nextPos = currPos + currDir;
+            Tile currentTile = GetTile(currPos.x, currPos.y);
+            Vector2Int inDir = currDir; // 이 타일로 들어온 방향
 
-            // 보드 밖으로 나가면 중단
-            if (nextPos.x < 0 || nextPos.x >= gridSize || nextPos.y < 0 || nextPos.y >= gridSize)
-                break;
+            // 1. 현재 타일의 기물에 따른 방향 전환 계산
+            PieceType type = currentGrid[currPos.x, currPos.y];
+            int orient = currentOrientations[currPos.x, currPos.y];
 
-            path.Add(nextPos);
-            currPos = nextPos;
+            Vector2Int nextDir = currDir; // 나갈 방향 (기본은 직진)
 
-            // 크리스탈 통과 시 카운트 (이후 기물 배치 시 0으로 초기화 후 재계산됨)
-            var crystal = currentCrystals.Find(c => c.Position == currPos);
-            if (crystal != null) crystal.CurrentHits++;
-
-            PieceType type = currentGrid[currPos.x, currPos.y];         // 타일의 Piece 정보
-            int orient = currentOrientations[currPos.x, currPos.y];     // 현재 방향
-
-            // 장애물에 막힘
-            if (type == PieceType.Obstacle) break;
-
-            // 유저가 배치한 Mirror/Prism에 따른 방향 전환 로직
             if (type == PieceType.Mirror)
             {
-                // 거울 반사: 90도 회전
-                if (orient == 0) // [/] 형태 거울
-                {
-                    // (1,0) -> (0,1) | (0,-1) -> (-1,0) ...
-                    currDir = new Vector2Int(-currDir.y, -currDir.x);
-                }
-                else // [\] 형태 거울
-                {
-                    // (1,0) -> (0,-1) | (0,1) -> (-1,0) ...
-                    currDir = new Vector2Int(currDir.y, currDir.x);
-                }
+                nextDir = (orient == 0) ? new Vector2Int(-currDir.y, -currDir.x) : new Vector2Int(currDir.y, currDir.x);
             }
             else if (type == PieceType.Prism)
             {
-                // 프리즘 굴절: 45도 굴절
-                Vector2Int rotationOffset;
-                if (orient == 0) // 시계 반대방향 45도
-                    rotationOffset = new Vector2Int(-currDir.y, currDir.x);
-                else             // 시계방향 45도
-                    rotationOffset = new Vector2Int(currDir.y, -currDir.x);
+                Vector2Int rotationOffset = (orient == 0) ? new Vector2Int(-currDir.y, currDir.x) : new Vector2Int(currDir.y, -currDir.x);
+                nextDir = currDir + rotationOffset;
+                nextDir.x = Mathf.Clamp(nextDir.x, -1, 1);
+                nextDir.y = Mathf.Clamp(nextDir.y, -1, 1);
+            }
+            else if (type == PieceType.Obstacle) break;
 
-                // 현재 방향 + 직교 방향 = 대각선(45도) 방향
-                currDir += rotationOffset;
-
-                // 방향 정규화 (-1, 0, 1)
-                currDir.x = Mathf.Clamp(currDir.x, -1, 1);
-                currDir.y = Mathf.Clamp(currDir.y, -1, 1);
+            // 2. 현재 타일에 빛 이미지 설정 (들어온 방향, 나갈 방향 전달)
+            if (currentTile != null)
+            {
+                currentTile.SetLight(inDir, nextDir);
             }
 
-            // 굴절 후 방향이 0이 되면 중단
-            if (currDir == Vector2Int.zero) break;
+            // 3. 다음 좌표로 이동
+            currDir = nextDir;
+            Vector2Int nextPos = currPos + currDir;
+
+            if (nextPos.x < 0 || nextPos.x >= gridSize || nextPos.y < 0 || nextPos.y >= gridSize)
+                break;
+
+            currPos = nextPos;
+
+            // 크리스탈 충돌 체크
+            var crystal = currentCrystals.Find(c => c.Position == currPos);
+            if (crystal != null) crystal.CurrentHits++;
         }
 
-        // 결과 반영
-        DrawLightPath(path);
         RefreshAllTiles();
         CheckWinCondition();
     }
