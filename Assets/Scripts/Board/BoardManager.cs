@@ -18,7 +18,6 @@ public class BoardManager : MonoBehaviour, IBoardService
     private int gridSize = 5;
 
     [Header("Light Visualization")]
-    [SerializeField] private LineRenderer lightBeamRenderer;
     [SerializeField] private Button generateBoardButton;
     [SerializeField] private float lightZOffset = -1f;
 
