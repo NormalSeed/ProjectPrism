@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
-using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -321,10 +320,23 @@ public class BoardManager : MonoBehaviour, IBoardService
     {
         if (isGenerating) return;
 
-        int totalAvailablePieces = GetTotalPieceCount();
-        if (totalAvailablePieces <= 0)
+        // 현재 팀의 거울과 프리즘 수 계산
+        int availableMirrors = 0;
+        int availablePrisms = 0;
+
+        var team = assignedSpirits.Take(3).Where(s => s != null).ToList();
+        foreach (var spirit in team)
         {
-            Debug.LogError("[BoardManager] 배치된 정령의 기물이 0개입니다. 정령을 먼저 설정하세요.");
+            foreach (var p in spirit.startingPieces)
+            {
+                if (p.pieceType == PieceType.Mirror) availableMirrors += p.count;
+                if (p.pieceType == PieceType.Prism) availablePrisms += p.count;
+            }
+        }
+
+        if (availableMirrors + availablePrisms <= 0)
+        {
+            Debug.LogError("[Board] 사용할 수 있는 기물이 없습니다.");
             return;
         }
 
@@ -389,8 +401,8 @@ public class BoardManager : MonoBehaviour, IBoardService
                 shuffledPos.RemoveAt(0);
             }
 
-            // 비동기 검증 (A* 순회 탐색)
-            validRoute = await pathFinder.FindFullRouteAsync(tempGenGrid, startPos, startDir, tempCrystals, totalAvailablePieces);
+            // 비동기 검증 (재귀 시뮬레이션)
+            validRoute = await pathFinder.FindFullRouteAsync(tempGenGrid, startPos, startDir, tempCrystals, availableMirrors, availablePrisms);
 
             if (attemptCount % 50 == 0) await UniTask.Yield();
 
