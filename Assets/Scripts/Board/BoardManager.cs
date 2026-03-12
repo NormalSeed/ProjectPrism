@@ -23,7 +23,7 @@ public class BoardManager : MonoBehaviour, IBoardService
     [Header("Stage Config")]
     [SerializeField] private int obstacleCount = 4; // 장애물 개수
     [SerializeField] private int crystalCount = 2;  // 크리스탈 개수
-    [SerializeField] private int maxPieces = 5;     // 사용할 수 있는 최대 기물 수
+    private int allRequiredHits = 0;
 
     [Header("Team & Inventory System")]
     [SerializeField] private List<SpiritData> assignedSpirits = new List<SpiritData>();
@@ -79,7 +79,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         
         if (gameService != null)
         {
-            gameService.OnStageChanged += (newStage) =>
+            gameService.OnBoardChanged += (newStage) =>
             {
                 CreateNewStageAsync().Forget();
             };
@@ -319,6 +319,7 @@ public class BoardManager : MonoBehaviour, IBoardService
     public async UniTaskVoid CreateNewStageAsync()
     {
         if (isGenerating) return;
+        if (gameService.isGameStarted == false) gameService.isGameStarted = true;
 
         // 현재 팀의 거울과 프리즘 수 계산
         int availableMirrors = 0;
@@ -429,6 +430,11 @@ public class BoardManager : MonoBehaviour, IBoardService
                 });
             }
 
+            foreach (CrystalData c in currentCrystals)
+            {
+                allRequiredHits += c.RequiredHits;
+            }
+
             currentEmitterPos = startPos;
             currentEmitterDir = startDir;
 
@@ -535,12 +541,6 @@ public class BoardManager : MonoBehaviour, IBoardService
         CheckWinCondition();
     }
 
-    private int GetTotalPieceCount()
-    {
-        int total = assignedSpirits.Take(maxTeamSize).Where(s => s != null).Sum(s => s.GetTotalPieceCount());
-        return total;
-    }
-
     private void CheckWinCondition()
     {
         if (currentCrystals.Count > 0 && currentCrystals.All(c => c.IsSatisfied))
@@ -550,7 +550,7 @@ public class BoardManager : MonoBehaviour, IBoardService
             // 게임 매니저에게 클리어 알림 전달
             if (gameService != null)
             {
-                gameService.CompleteStage();
+                gameService.CompleteBoard(allRequiredHits, gameService.remainingTime.Value);
             }
         }
     }
