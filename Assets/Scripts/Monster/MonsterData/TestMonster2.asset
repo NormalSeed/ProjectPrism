@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TestMonster2
   m_EditorClassIdentifier: Assembly-CSharp::MonsterData
   monsterName: Test2
-  monsterSprite: {fileID: 3747881317576710508, guid: abf09c62a24adab4fa1653ed8f1b0ab4, type: 3}
-  maxHp: 9999
+  monsterSprite: {fileID: -7816321469551977923, guid: 0e90d4d3b09d0564c8d1e91048b14ccb, type: 3}
+  maxHp: 100
   baseReward: 100
   themeColor: {r: 1, g: 0, b: 0, a: 1}

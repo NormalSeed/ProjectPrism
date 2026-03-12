@@ -72,8 +72,6 @@ public class GameManager : MonoBehaviour, IGameService
     {
         StageLevel.Value++;
         Debug.Log($"<color=red> [Game] 몬스터 처치. 다음 스테이지 {StageLevel.Value} 시작.");
-
-        RefreshBoard();
     }
 
     public void RefreshBoard()
