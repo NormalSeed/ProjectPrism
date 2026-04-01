@@ -8,8 +8,8 @@ public interface IGameService
     event Action<int> OnDamageCalculated;
 
     public ObservableProperty<int> StageLevel { get; }
-    public ObservableProperty<float> remainingTime { get; }
-    public ObservableProperty<float> boardDuration { get; }
+    public ObservableProperty<float> RemainingTime { get; }
+    public ObservableProperty<float> BoardDuration { get; }
 
     public bool isGameStarted { get; set; }
 

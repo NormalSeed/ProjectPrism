@@ -41,7 +41,7 @@ public class MonsterBattleUI : MonoBehaviour
         {
             // 스테이지 레벨 변경 구독
             gm.StageLevel.Subscribe(UpdateStageText);
-            gm.remainingTime.Subscribe(UpdateRemainingTime);
+            gm.RemainingTime.Subscribe(UpdateRemainingTime);
         }
     }
 
@@ -77,7 +77,7 @@ public class MonsterBattleUI : MonoBehaviour
         if (gameService is GameManager gm)
         {
             gm.StageLevel.Unsubscribe(UpdateStageText);
-            gm.remainingTime.Unsubscribe(UpdateRemainingTime);
+            gm.RemainingTime.Unsubscribe(UpdateRemainingTime);
         }
     }
 }

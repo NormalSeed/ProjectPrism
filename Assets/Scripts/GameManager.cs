@@ -11,8 +11,8 @@ public class GameManager : MonoBehaviour, IGameService
     public ObservableProperty<int> StageLevel { get; } = new(1);
 
     // 데미지 계산에 필요한 정보
-    public ObservableProperty<float> remainingTime { get; } = new();
-    public ObservableProperty<float> boardDuration { get; } = new();
+    public ObservableProperty<float> RemainingTime { get; } = new();
+    public ObservableProperty<float> BoardDuration { get; } = new();
 
     // 보드 클리어 시 발생하는 이벤트 (데미지 계산 결과 전달)
     public event Action<int> OnDamageCalculated;
@@ -29,17 +29,17 @@ public class GameManager : MonoBehaviour, IGameService
             RefreshBoard();
         };
 
-        boardDuration.Value = 30f;
-        remainingTime.Value = boardDuration.Value;
+        BoardDuration.Value = 30f;
+        RemainingTime.Value = BoardDuration.Value;
     }
 
     private void Update()
     {
         if (isGameStarted == false) return;
 
-        if (remainingTime.Value > 0)
+        if (RemainingTime.Value > 0)
         {
-            remainingTime.Value -= Time.deltaTime;
+            RemainingTime.Value -= Time.deltaTime;
         }
         else
         {
@@ -78,7 +78,7 @@ public class GameManager : MonoBehaviour, IGameService
     {
         // 스테이지 변경 이벤트 알림 (BoardManager가 이를 듣고 새 보드를 생성함)
         OnBoardChanged?.Invoke(StageLevel.Value);
-        remainingTime.Value = boardDuration.Value;
+        RemainingTime.Value = BoardDuration.Value;
     }
 
     public void LoadScene(string name) => UnityEngine.SceneManagement.SceneManager.LoadScene(name);

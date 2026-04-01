@@ -550,7 +550,7 @@ public class BoardManager : MonoBehaviour, IBoardService
             // 게임 매니저에게 클리어 알림 전달
             if (gameService != null)
             {
-                gameService.CompleteBoard(allRequiredHits, gameService.remainingTime.Value);
+                gameService.CompleteBoard(allRequiredHits, gameService.RemainingTime.Value);
             }
         }
     }
