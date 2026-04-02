@@ -170,23 +170,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6cb7aa62f9a7dc240860325ccc01f707, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  obstacleIcon: {fileID: 1569445504975032184}
-  crystalIcon: {fileID: 8650672631245911174}
-  crystalText: {fileID: 7228076220494173883}
-  emitterIcon: {fileID: 2582421792343618859}
-  mirrorIcon: {fileID: 2966584864939166510}
-  prismIcon: {fileID: 1736586149387822321}
-  lightHorizontal: {fileID: 5146454210481028617}
-  lightVertical: {fileID: 5830605507788973127}
-  lightDiagonal1: {fileID: 8607913873674291867}
-  lightDiagonal2: {fileID: 154703971533882886}
-  lightTopLeft: {fileID: 3368856875173276805}
-  lightTopRight: {fileID: 7726805967203191514}
-  lightBottomLeft: {fileID: 3235184426452056691}
-  lightBottomRight: {fileID: 2826758703667561463}
-  crystalBg: {fileID: 1287534113091327798}
-  normalColor: {r: 1, g: 1, b: 1, a: 1}
-  satisfiedColor: {r: 0, g: 1, b: 0, a: 1}
+  _obstacleIcon: {fileID: 1569445504975032184}
+  _crystalIcon: {fileID: 8650672631245911174}
+  _crystalText: {fileID: 7228076220494173883}
+  _emitterIcon: {fileID: 2582421792343618859}
+  _mirrorIcon: {fileID: 2966584864939166510}
+  _prismIcon: {fileID: 1736586149387822321}
+  _lightHorizontal: {fileID: 5146454210481028617}
+  _lightVertical: {fileID: 5830605507788973127}
+  _lightDiagonal1: {fileID: 8607913873674291867}
+  _lightDiagonal2: {fileID: 154703971533882886}
+  _lightTopLeft: {fileID: 3368856875173276805}
+  _lightTopRight: {fileID: 7726805967203191514}
+  _lightBottomLeft: {fileID: 3235184426452056691}
+  _lightBottomRight: {fileID: 2826758703667561463}
+  _crystalBg: {fileID: 1287534113091327798}
+  _normalColor: {r: 1, g: 1, b: 1, a: 1}
+  _satisfiedColor: {r: 0, g: 1, b: 0, a: 1}
 --- !u!114 &4717912398833591125
 MonoBehaviour:
   m_ObjectHideFlags: 0
