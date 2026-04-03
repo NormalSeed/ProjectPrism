@@ -46,3 +46,5 @@
 - 에셋 관리: 대용량 캐릭터 리소스는 Addressables 시스템을 통해 동적으로 로드 및 언로드합니다.
 - 버전 관리: .meta 파일 누락은 엄격히 금지하며, 대용량 바이너리는 LFS (Large File Storage)를 사용합니다.
 - 데이터 구조: 캐릭터 및 퍼즐 데이터는 ScriptableObject를 기반으로 정의합니다.
+- 내가 지시할 때마다 /.claude/previousWork.md 파일에 내용과 결과를 요약해서 영어로 추가로 작성해줘.
+- 이전 세션의 내용을 /.claude/previousWork.md 파일에서 세션이 시작할 때 한번 읽은 후 md 파일의 내용을 한번 초기화하고 이전 작업을 이어서 진행해줘.

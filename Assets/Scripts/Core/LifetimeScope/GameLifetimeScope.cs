@@ -1,4 +1,4 @@
-﻿using VContainer;
+using VContainer;
 using VContainer.Unity;
 
 public class GameLifetimeScope : LifetimeScope
@@ -6,7 +6,8 @@ public class GameLifetimeScope : LifetimeScope
     protected override void Configure(IContainerBuilder builder)
     {
         builder.RegisterEntryPoint<FirebaseInitializer>();
-        builder.Register<IAuthService, EmailAuthService>(Lifetime.Singleton);
+        builder.Register<IEmailAuthService, EmailAuthService>(Lifetime.Singleton);
+        builder.Register<IGoogleAuthService, GoogleAuthService>(Lifetime.Singleton);
         builder.Register<UserDataModel>(Lifetime.Singleton);
 
         builder.RegisterComponentInHierarchy<RegisterPresenter>();

@@ -76,3 +76,4 @@ crashlytics-build.properties
 /Assets/Imports
 /Assets/Firebase
 Assets/user.keystore
+/Assets/.claude

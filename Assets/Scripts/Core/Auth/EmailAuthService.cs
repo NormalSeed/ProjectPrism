@@ -1,23 +1,22 @@
-﻿using Cysharp.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using Firebase.Auth;
-using UnityEngine;
 
-public class EmailAuthService : IAuthService
+public class EmailAuthService : IEmailAuthService
 {
-    FirebaseAuth auth => FirebaseAuth.DefaultInstance;
-    public FirebaseUser currentUser => auth.CurrentUser;
+    private FirebaseAuth _auth => FirebaseAuth.DefaultInstance;
+    public FirebaseUser currentUser => _auth.CurrentUser;
 
     public async UniTask<FirebaseUser> SignInAsync(string email, string password)
     {
-        var result = await auth.SignInWithEmailAndPasswordAsync(email, password).AsUniTask();
+        var result = await _auth.SignInWithEmailAndPasswordAsync(email, password).AsUniTask();
         return result.User;
     }
 
     public async UniTask<FirebaseUser> SignUpAsync(string email, string password)
     {
-        var result = await auth.CreateUserWithEmailAndPasswordAsync(email, password).AsUniTask();
+        var result = await _auth.CreateUserWithEmailAndPasswordAsync(email, password).AsUniTask();
         return result.User;
     }
 
-    public void SignOut() => auth.SignOut();
+    public void SignOut() => _auth.SignOut();
 }

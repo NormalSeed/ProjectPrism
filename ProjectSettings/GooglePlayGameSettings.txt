@@ -1,2 +1,9 @@
 lastUpgrade=20100
 proj.pluginVersion=2.1.0
+proj.AppId=504100776999
+and.BundleId=com.seed.projectprism
+proj.classDir=Assets
+proj.ConstantsClassName=GPGSIds
+and.ResourceData=%3cresources%3e%0d%0a++%3c%21--app_id--%3e%0d%0a++%3cstring+name%3d%22app_id%22+translatable%3d%22false%22%3e504100776999%3c%2fstring%3e%0d%0a++%3c%21--package_name--%3e%0d%0a++%3cstring+name%3d%22package_name%22+translatable%3d%22false%22%3ecom.seed.projectprism%3c%2fstring%3e%0d%0a++%3c%21--achievement+Init+Game--%3e%0d%0a++%3cstring+name%3d%22achievement_init_game%22+translatable%3d%22false%22%3eCgkIp9j99dUOEAIQAQ%3c%2fstring%3e%0d%0a%3c%2fresources%3e
+and.ClientId=504100776999-msmrac9um0p6kbt1m4nekhsdl5mppc01.apps.googleusercontent.com
+android.SetupDone=true

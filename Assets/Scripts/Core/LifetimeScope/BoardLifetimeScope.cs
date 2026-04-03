@@ -19,6 +19,7 @@ public class BoardLifetimeScope : LifetimeScope
         builder.RegisterComponentInHierarchy<MonsterManager>().As<IMonsterService>();
 
         // UI 컨트롤러 등록
+        builder.RegisterComponentInHierarchy<NewUserSetupPresenter>();
         builder.RegisterComponentInHierarchy<SpiritInventoryUI>();
         builder.RegisterComponentInHierarchy <PieceSelectorUI>();
         builder.RegisterComponentInHierarchy<RightUI>();

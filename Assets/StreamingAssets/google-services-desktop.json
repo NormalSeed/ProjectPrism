@@ -12,7 +12,20 @@
           "package_name": "com.seed.projectprism"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "504100776999-lcmdp89v9lv028iu3rke7h06m4tjesqr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.seed.projectprism",
+            "certificate_hash": "672e8606e187a4dbefff0c62d354df2d1ed7812b"
+          }
+        },
+        {
+          "client_id": "504100776999-msmrac9um0p6kbt1m4nekhsdl5mppc01.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA6Tn0nvdUruTg15w_uIlMs-z3w-C6ZiUU"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "504100776999-msmrac9um0p6kbt1m4nekhsdl5mppc01.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

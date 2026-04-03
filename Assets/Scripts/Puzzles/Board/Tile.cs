@@ -89,21 +89,36 @@ public class Tile : MonoBehaviour, IPointerClickHandler
     /// </summary>
     public void SetLight(Vector2Int inDir, Vector2Int outDir)
     {
+        // 직진: 같은 방향
         if (inDir == outDir)
         {
-            if (inDir.x != 0 && inDir.y == 0) _lightHorizontal?.SetActive(true);
-            else if (inDir.x == 0 && inDir.y != 0) _lightVertical?.SetActive(true);
-            else if (inDir.x == inDir.y) _lightDiagonal1?.SetActive(true);
-            else if (inDir.x == -inDir.y) _lightDiagonal2?.SetActive(true);
+            ActivateLightSegment(inDir);
             return;
         }
 
-        HashSet<Vector2Int> connections = new HashSet<Vector2Int> { -inDir, outDir };
+        bool inIsStraight = inDir.x == 0 || inDir.y == 0;
+        bool outIsStraight = outDir.x == 0 || outDir.y == 0;
 
-        if (connections.Contains(Vector2Int.up) && connections.Contains(Vector2Int.right)) _lightTopLeft?.SetActive(true);
-        else if (connections.Contains(Vector2Int.up) && connections.Contains(Vector2Int.left)) _lightTopRight?.SetActive(true);
-        else if (connections.Contains(Vector2Int.down) && connections.Contains(Vector2Int.right)) _lightBottomLeft?.SetActive(true);
-        else if (connections.Contains(Vector2Int.down) && connections.Contains(Vector2Int.left)) _lightBottomRight?.SetActive(true);
+        // 거울: 수평/수직 사이의 90도 꺾임 → 코너 세그먼트
+        if (inIsStraight && outIsStraight)
+        {
+            HashSet<Vector2Int> c = new HashSet<Vector2Int> { -inDir, outDir };
+            if (c.Contains(Vector2Int.up) && c.Contains(Vector2Int.right)) _lightTopLeft?.SetActive(true);
+            else if (c.Contains(Vector2Int.up) && c.Contains(Vector2Int.left)) _lightTopRight?.SetActive(true);
+            else if (c.Contains(Vector2Int.down) && c.Contains(Vector2Int.right)) _lightBottomLeft?.SetActive(true);
+            else if (c.Contains(Vector2Int.down) && c.Contains(Vector2Int.left)) _lightBottomRight?.SetActive(true);
+            return;
+        }
+
+        // 프리즘: 45도 굴절 → 프리즘 아이콘으로 표현하므로 빛 세그먼트 표시 안 함
+    }
+
+    private void ActivateLightSegment(Vector2Int dir)
+    {
+        if (dir.x != 0 && dir.y == 0) _lightHorizontal?.SetActive(true);
+        else if (dir.x == 0 && dir.y != 0) _lightVertical?.SetActive(true);
+        else if (dir.x == dir.y) _lightDiagonal1?.SetActive(true);
+        else if (dir.x == -dir.y) _lightDiagonal2?.SetActive(true);
     }
 
     public void ClearLight()

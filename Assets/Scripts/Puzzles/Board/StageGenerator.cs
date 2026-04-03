@@ -52,9 +52,10 @@ public class StageGenerator
             originalHits.Clear();
 
             List<Vector2Int> shuffledPos = GetShuffledPositions();
+            List<Vector2Int> edgePositions = GetShuffledEdgePositions();
 
-            startPos = shuffledPos[0];
-            shuffledPos.RemoveAt(0);
+            startPos = edgePositions[0];
+            shuffledPos.Remove(startPos);
             startDir = GetValidStartDir(startPos);
             tempGenGrid[startPos.x, startPos.y] = 3;
 
@@ -151,6 +152,29 @@ public class StageGenerator
         for (int y = 0; y < _gridSize; y++)
             for (int x = 0; x < _gridSize; x++)
                 positions.Add(new Vector2Int(x, y));
+
+        // Fisher-Yates 셔플
+        for (int i = positions.Count - 1; i > 0; i--)
+        {
+            int rnd = UnityEngine.Random.Range(0, i + 1);
+            (positions[i], positions[rnd]) = (positions[rnd], positions[i]);
+        }
+        return positions;
+    }
+
+    private List<Vector2Int> GetShuffledEdgePositions()
+    {
+        var positions = new List<Vector2Int>();
+        for (int x = 0; x < _gridSize; x++)
+        {
+            positions.Add(new Vector2Int(x, 0));
+            positions.Add(new Vector2Int(x, _gridSize - 1));
+        }
+        for (int y = 1; y < _gridSize - 1; y++)
+        {
+            positions.Add(new Vector2Int(0, y));
+            positions.Add(new Vector2Int(_gridSize - 1, y));
+        }
 
         // Fisher-Yates 셔플
         for (int i = positions.Count - 1; i > 0; i--)

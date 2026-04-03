@@ -110,27 +110,51 @@ public class PuzzlePathFinder
             // 옵션 2: 거울 배치 (90도 반사)
             if (mirrors > 0)
             {
+                grid[nextPos.x, nextPos.y] = 4; // 기물 점유 기록 (백트래킹 시 재배치 방지)
+
                 // [/] 방향 반사
                 Vector2Int dirMirror1 = new Vector2Int(-currDir.y, -currDir.x);
-                if (Solve(grid, nextPos, dirMirror1, crystals, mirrors - 1, prisms, depth + 1, path)) return true;
+                if (Solve(grid, nextPos, dirMirror1, crystals, mirrors - 1, prisms, depth + 1, path))
+                {
+                    grid[nextPos.x, nextPos.y] = 0;
+                    return true;
+                }
 
                 // [\] 방향 반사
                 Vector2Int dirMirror2 = new Vector2Int(currDir.y, currDir.x);
-                if (Solve(grid, nextPos, dirMirror2, crystals, mirrors - 1, prisms, depth + 1, path)) return true;
+                if (Solve(grid, nextPos, dirMirror2, crystals, mirrors - 1, prisms, depth + 1, path))
+                {
+                    grid[nextPos.x, nextPos.y] = 0;
+                    return true;
+                }
+
+                grid[nextPos.x, nextPos.y] = 0; // 복구
             }
 
             // 옵션 3: 프리즘 배치 (45도 굴절)
             if (prisms > 0)
             {
+                grid[nextPos.x, nextPos.y] = 5; // 기물 점유 기록
+
                 // 시계 반대방향 45도 굴절
                 Vector2Int dirPrism1 = currDir + new Vector2Int(-currDir.y, currDir.x);
                 dirPrism1 = new Vector2Int(Mathf.Clamp(dirPrism1.x, -1, 1), Mathf.Clamp(dirPrism1.y, -1, 1));
-                if (Solve(grid, nextPos, dirPrism1, crystals, mirrors, prisms - 1, depth + 1, path)) return true;
+                if (Solve(grid, nextPos, dirPrism1, crystals, mirrors, prisms - 1, depth + 1, path))
+                {
+                    grid[nextPos.x, nextPos.y] = 0;
+                    return true;
+                }
 
                 // 시계 방향 45도 굴절
                 Vector2Int dirPrism2 = currDir + new Vector2Int(currDir.y, -currDir.x);
                 dirPrism2 = new Vector2Int(Mathf.Clamp(dirPrism2.x, -1, 1), Mathf.Clamp(dirPrism2.y, -1, 1));
-                if (Solve(grid, nextPos, dirPrism2, crystals, mirrors, prisms - 1, depth + 1, path)) return true;
+                if (Solve(grid, nextPos, dirPrism2, crystals, mirrors, prisms - 1, depth + 1, path))
+                {
+                    grid[nextPos.x, nextPos.y] = 0;
+                    return true;
+                }
+
+                grid[nextPos.x, nextPos.y] = 0; // 복구
             }
         }
         else

@@ -1,51 +1,44 @@
-﻿using Cysharp.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using Firebase.Auth;
 using UnityEngine;
 using VContainer;
 
 public class RegisterPresenter : MonoBehaviour
 {
-    RegisterView view;
-
-    IAuthService authService;
-    UserDataModel userDataModel;
+    private RegisterView _view;
+    private IEmailAuthService _authService;
+    private UserDataModel _userDataModel;
 
     [Inject]
-    public void Construct(IAuthService _authService, UserDataModel _userDataModel)
+    public void Construct(IEmailAuthService authService, UserDataModel userDataModel)
     {
-        authService = _authService;
-        userDataModel = _userDataModel;
+        _authService = authService;
+        _userDataModel = userDataModel;
     }
 
-    void Start()
+    private void Start()
     {
-        view = GetComponent<RegisterView>();
+        _view = GetComponent<RegisterView>();
 
-        view.RegisterButton.onClick.AddListener(() => OnRegisterClicked().Forget());
-        view.CancleButton.onClick.AddListener(CancleRegisterPannel);
+        _view.RegisterButton.onClick.AddListener(() => OnRegisterClicked().Forget());
+        _view.CancleButton.onClick.AddListener(CancelRegisterPanel);
     }
 
-    async UniTaskVoid OnRegisterClicked()
+    private async UniTaskVoid OnRegisterClicked()
     {
-        string email = view.EmailInput.text;
-        string password = view.PasswordInput.text;
+        string email = _view.EmailInput.text;
+        string password = _view.PasswordInput.text;
 
-        view.SetInteractable(false);
+        _view.SetInteractable(false);
 
         try
         {
-            // 2. Firebase 회원가입 요청
-            var user = await authService.SignUpAsync(email, password);
-
-            // 3. 성공 시 데이터 모델 업데이트
-            userDataModel.Email = user.Email;
+            var user = await _authService.SignUpAsync(email, password);
+            _userDataModel.Email = user.Email;
             Debug.Log($"회원가입 성공: {user.Email}님 환영합니다!");
-
-            // 가입 성공 후 메인 로비로 이동하는 로직 등을 여기에 추가
         }
         catch (Firebase.FirebaseException ex)
         {
-            // 4. Firebase 전용 에러 처리
             HandleRegisterError(ex);
         }
         catch (System.Exception ex)
@@ -54,11 +47,11 @@ public class RegisterPresenter : MonoBehaviour
         }
         finally
         {
-            view.SetInteractable(true);
+            _view.SetInteractable(true);
         }
     }
 
-    void HandleRegisterError(Firebase.FirebaseException ex)
+    private void HandleRegisterError(Firebase.FirebaseException ex)
     {
         AuthError errorCode = (AuthError)ex.ErrorCode;
         string message = errorCode switch
@@ -71,7 +64,7 @@ public class RegisterPresenter : MonoBehaviour
         Debug.LogError(message);
     }
 
-    void CancleRegisterPannel()
+    private void CancelRegisterPanel()
     {
         gameObject.SetActive(false);
     }

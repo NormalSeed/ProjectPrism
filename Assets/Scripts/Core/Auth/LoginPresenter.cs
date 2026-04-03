@@ -1,55 +1,106 @@
-﻿using Cysharp.Threading.Tasks;
-using Cysharp.Threading.Tasks.Linq;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using VContainer;
 
 public class LoginPresenter : MonoBehaviour
 {
-    LoginView view;
-
-    IAuthService authService;
-    UserDataModel userModel;
+    private LoginView _view;
+    private IEmailAuthService _emailAuthService;
+    private IGoogleAuthService _googleAuthService;
+    private UserDataModel _userModel;
+    private bool _isProcessing;
 
     [Inject]
-    public void Construct(IAuthService _authService, UserDataModel _userModel)
+    public void Construct(IEmailAuthService emailAuthService, IGoogleAuthService googleAuthService, UserDataModel userModel)
     {
-        authService = _authService;
-        userModel = _userModel;
+        _emailAuthService = emailAuthService;
+        _googleAuthService = googleAuthService;
+        _userModel = userModel;
     }
 
-    void Start()
+    private void Start()
     {
-        view = GetComponent<LoginView>();
-
-        view.LoginButton.OnClickAsAsyncEnumerable()
-            .Subscribe(_ => OnLoginClicked().Forget());
-        view.ToRegisterButton.onClick.AddListener(PopUpRegisterPannel);
+        _view = GetComponent<LoginView>();
+        _view.LoginButton.onClick.AddListener(() => OnEmailLoginClicked().Forget());
+        _view.GoogleLoginButton.onClick.AddListener(() => OnGoogleLoginClicked().Forget());
+        _view.ToRegisterButton.onClick.AddListener(PopUpRegisterPanel);
     }
 
-    async UniTaskVoid OnLoginClicked()
+    private async UniTaskVoid OnEmailLoginClicked()
     {
-        view.SetInteractable(false);
+        if (_isProcessing) return;
+        _isProcessing = true;
+        _view.SetInteractable(false);
         try
         {
-            var user = await authService.SignInAsync(view.EmailInput.text, view.PasswordInput.text);
-            userModel.Email = user.Email; // Model 업데이트
-            Debug.Log("로그인 성공!");
+            var user = await _emailAuthService.SignInAsync(_view.EmailInput.text, _view.PasswordInput.text);
+            _userModel.Email = user.Email;
+            _userModel.DisplayName = user.DisplayName;
+            Debug.Log("[Login] 이메일 로그인 성공!");
+            OnLoginSuccess();
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"로그인 실패: {e.Message}");
+            Debug.LogError($"[Login] 이메일 로그인 실패: {e.Message}");
         }
         finally
         {
-            view.SetInteractable(true);
+            _isProcessing = false;
+            _view.SetInteractable(true);
         }
     }
 
-    void PopUpRegisterPannel()
+    private async UniTaskVoid OnGoogleLoginClicked()
     {
-        if (!view.RegisterPannel.activeSelf)
+        if (_isProcessing) return;
+        _isProcessing = true;
+        _view.SetInteractable(false);
+        try
         {
-            view.RegisterPannel.SetActive(true);
+            var result = await _googleAuthService.SignInWithGoogleAsync();
+            _userModel.Email = result.User.Email;
+            _userModel.DisplayName = result.User.DisplayName;
+            _userModel.PhotoUrl = result.User.PhotoUrl?.ToString();
+            _userModel.IsNewUser = result.IsNewUser;
+
+            if (result.IsNewUser)
+            {
+                Debug.Log("[Login] 구글 계정 신규 등록 완료. 프로필 설정으로 이동합니다.");
+                OnNewUserRegistered();
+            }
+            else
+            {
+                Debug.Log("[Login] 구글 로그인 성공.");
+                OnLoginSuccess();
+            }
         }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Login] 구글 로그인 실패: {e.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+            _view.SetInteractable(true);
+        }
+    }
+
+    private void OnLoginSuccess()
+    {
+        SceneManager.LoadScene("GameTest");
+    }
+
+    private void OnNewUserRegistered()
+    {
+        PlayerPrefs.SetInt("IsNewUser", 1);
+        PlayerPrefs.Save();
+        SceneManager.LoadScene("GameTest");
+    }
+
+    private void PopUpRegisterPanel()
+    {
+        if (!_view.RegisterPannel.activeSelf)
+            _view.RegisterPannel.SetActive(true);
     }
 }

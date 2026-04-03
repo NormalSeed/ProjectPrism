@@ -217,17 +217,10 @@ public class BoardManager : MonoBehaviour, IBoardService
         _isGenerating = true;
         if (_generateBoardButton != null) _generateBoardButton.interactable = false;
 
-        int availableMirrors = 0;
-        int availablePrisms = 0;
+        InitInventory();
 
-        foreach (var spirit in _assignedSpirits.Take(3).Where(s => s != null))
-        {
-            foreach (var p in spirit.startingPieces)
-            {
-                if (p.pieceType == PieceType.Mirror) availableMirrors += p.count;
-                if (p.pieceType == PieceType.Prism) availablePrisms += p.count;
-            }
-        }
+        int availableMirrors = GetRemainingPieceCount(PieceType.Mirror);
+        int availablePrisms = GetRemainingPieceCount(PieceType.Prism);
 
         if (availableMirrors + availablePrisms <= 0)
         {
@@ -244,7 +237,6 @@ public class BoardManager : MonoBehaviour, IBoardService
             ApplyStageResult(result);
         }
 
-        InitInventory();
         if (_generateBoardButton != null) _generateBoardButton.interactable = true;
         _isGenerating = false;
     }
