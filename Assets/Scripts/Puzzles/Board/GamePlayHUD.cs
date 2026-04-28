@@ -11,6 +11,7 @@ public class GamePlayHUD : MonoBehaviour
     private RectTransform _gameHUDRect;
     private GridLayoutGroup _gridLayout;
     private int _gridSize = 5;
+    private Vector2 _lastHUDRectSize;
 
     [Header("Spirit Info")]
     [SerializeField] private Image _spiritIcon;
@@ -37,9 +38,16 @@ public class GamePlayHUD : MonoBehaviour
         InitializeAsync(this.GetCancellationTokenOnDestroy()).Forget();
     }
 
+    private void Update()
+    {
+        if (_gameHUDRect != null && _lastHUDRectSize != _gameHUDRect.rect.size)
+            UpdateHUDLayout();
+    }
+
     private async UniTaskVoid InitializeAsync(CancellationToken ct)
     {
         await UniTask.NextFrame(ct);
+        Canvas.ForceUpdateCanvases();
         UpdateHUDLayout();
 
         if (_boardService != null)
@@ -72,11 +80,25 @@ public class GamePlayHUD : MonoBehaviour
     public void UpdateHUDLayout()
     {
         if (_gameHUDRect == null || _gridLayout == null) return;
-        float size = _gameHUDRect.rect.width;
-        float totalPadding = _gridLayout.padding.left + _gridLayout.padding.right;
-        float totalSpacing = _gridLayout.spacing.x * (_gridSize - 1);
-        float finalCellSize = (size - totalPadding - totalSpacing) / _gridSize;
+        float hudWidth = _gameHUDRect.rect.width;
+        if (hudWidth <= 0) return;
 
+        _lastHUDRectSize = _gameHUDRect.rect.size;
+
+        float totalHPadding = _gridLayout.padding.left + _gridLayout.padding.right;
+        float totalHSpacing = _gridLayout.spacing.x * (_gridSize - 1);
+        float cellSizeByWidth = (hudWidth - totalHPadding - totalHSpacing) / _gridSize;
+
+        float cellSizeByHeight = cellSizeByWidth;
+        float hudHeight = _gameHUDRect.rect.height;
+        if (hudHeight > 0)
+        {
+            float totalVPadding = _gridLayout.padding.top + _gridLayout.padding.bottom;
+            cellSizeByHeight = hudHeight - totalVPadding;
+        }
+
+        float finalCellSize = Mathf.Min(cellSizeByWidth, cellSizeByHeight);
+        if (finalCellSize <= 0) return;
         _gridLayout.cellSize = new Vector2(finalCellSize, finalCellSize);
     }
 }

@@ -12,7 +12,7 @@ public interface IBoardService
 
     // 게임 로직
     void SimulateCurrentLight();
-    void SetTeam(List<SpiritData> team);
+    void SetSpirit(SpiritData spirit);
 
     // 기물 상호작용 및 인벤토리 조회
     void OnPieceButtonClicked(PieceType type);

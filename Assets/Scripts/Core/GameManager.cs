@@ -1,11 +1,20 @@
 using System;
 using UnityEngine;
+using VContainer;
 
 public class GameManager : MonoBehaviour, IGameService
 {
     [Header("Combat Balance")]
     [SerializeField] private int _damageMultiplier = 50;
     [SerializeField] private float _timeBonusScale = 10f;
+
+    private ISceneService _sceneService;
+
+    [Inject]
+    public void Construct(ISceneService sceneService)
+    {
+        _sceneService = sceneService;
+    }
 
     public ObservableProperty<int> StageLevel { get; } = new(1);
     public ObservableProperty<float> RemainingTime { get; } = new();
@@ -71,11 +80,11 @@ public class GameManager : MonoBehaviour, IGameService
         RemainingTime.Value = BoardDuration.Value;
     }
 
-    public void LoadScene(string name) => UnityEngine.SceneManagement.SceneManager.LoadScene(name);
+    public void LoadScene(string name) => _sceneService.LoadScene(name);
 
     public void RestartGame()
     {
         StageLevel.Value = 1;
-        LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        _sceneService.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
 }

@@ -8,7 +8,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Test/GoogleLogin.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
-  - enabled: 0
+  - enabled: 1
+    path: Assets/Scenes/Test/MainMenu.unity
+    guid: 68c3715e408ff9b4fad616174dfd5d8c
+  - enabled: 1
     path: Assets/Scenes/Test/GameTest.unity
     guid: 8312ed4db492d6942800423c63f1f556
   m_configObjects:

@@ -1,6 +1,5 @@
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using VContainer;
 
 public class LoginPresenter : MonoBehaviour
@@ -9,14 +8,16 @@ public class LoginPresenter : MonoBehaviour
     private IEmailAuthService _emailAuthService;
     private IGoogleAuthService _googleAuthService;
     private UserDataModel _userModel;
+    private ISceneService _sceneService;
     private bool _isProcessing;
 
     [Inject]
-    public void Construct(IEmailAuthService emailAuthService, IGoogleAuthService googleAuthService, UserDataModel userModel)
+    public void Construct(IEmailAuthService emailAuthService, IGoogleAuthService googleAuthService, UserDataModel userModel, ISceneService sceneService)
     {
         _emailAuthService = emailAuthService;
         _googleAuthService = googleAuthService;
         _userModel = userModel;
+        _sceneService = sceneService;
     }
 
     private void Start()
@@ -88,14 +89,14 @@ public class LoginPresenter : MonoBehaviour
 
     private void OnLoginSuccess()
     {
-        SceneManager.LoadScene("GameTest");
+        _sceneService.LoadMainMenuScene();
     }
 
     private void OnNewUserRegistered()
     {
-        PlayerPrefs.SetInt("IsNewUser", 1);
+        PlayerPrefs.SetInt(GameConsts.IsNewUserKey, 1);
         PlayerPrefs.Save();
-        SceneManager.LoadScene("GameTest");
+        _sceneService.LoadMainMenuScene();
     }
 
     private void PopUpRegisterPanel()

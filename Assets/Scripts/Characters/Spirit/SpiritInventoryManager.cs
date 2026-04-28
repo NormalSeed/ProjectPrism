@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using VContainer;
 
@@ -60,8 +61,8 @@ public class SpiritInventoryManager : MonoBehaviour, IInventoryService
     {
         if (_boardService != null)
         {
-            _boardService.SetTeam(new List<SpiritData>(_selectedTeam));
-            Debug.Log($"[SpiritInventory] 팀 동기화 완료: {_selectedTeam.Count}마리 출전 준비.");
+            _boardService.SetSpirit(_selectedTeam.FirstOrDefault());
+            Debug.Log($"[SpiritInventory] 정령 동기화 완료: {(_selectedTeam.Count > 0 ? _selectedTeam[0].name : "없음")}");
         }
     }
 

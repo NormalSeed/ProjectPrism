@@ -4,5 +4,12 @@
       "mcp__UnityMCP__refresh_unity",
       "mcp__UnityMCP__read_console"
     ]
+  },
+
+  "model": "sonnet",
+  "env": {
+    "MAX_THINKING_TOKENS": "10000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
   }
 }

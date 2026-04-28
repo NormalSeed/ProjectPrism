@@ -15,6 +15,7 @@ public class BoardManager : MonoBehaviour, IBoardService
     [SerializeField] private RectTransform _boardRect;
     private GridLayoutGroup _gridLayout;
     private int _gridSize = 5;
+    private Vector2 _lastBoardRectSize;
 
     [Header("Light Visualization")]
     [SerializeField] private Button _generateBoardButton;
@@ -25,11 +26,11 @@ public class BoardManager : MonoBehaviour, IBoardService
     [SerializeField] private int _crystalCount = 2;
 
     [Header("Team & Inventory System")]
-    [SerializeField] private List<SpiritData> _assignedSpirits = new List<SpiritData>();
+    [SerializeField] private List<SpiritData> _allAvailableSpirits = new List<SpiritData>();
+    [SerializeField] private Image _spiritIcon;
+    private SpiritData _assignedSpirit;
     private Dictionary<PieceType, int> _remainingPieces = new Dictionary<PieceType, int>();
     private PieceType _selectedPieceType = PieceType.None;
-    [SerializeField] private int _maxTeamSize = 3;
-    [SerializeField] private List<Image> _spiritIcons = new List<Image>();
 
     [Header("Interaction UI")]
     [SerializeField] private Image _dragGhostIcon;
@@ -74,6 +75,12 @@ public class BoardManager : MonoBehaviour, IBoardService
         InitializeAsync(_ct).Forget();
     }
 
+    private void Update()
+    {
+        if (_boardRect != null && _lastBoardRectSize != _boardRect.rect.size)
+            UpdateBoardLayOut();
+    }
+
     private async UniTaskVoid InitializeAsync(CancellationToken ct)
     {
         await UniTask.NextFrame(ct);
@@ -81,6 +88,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         _stageGenerator = new StageGenerator(_pathFinder, _gridSize, _obstacleCount, _crystalCount);
         _lightSimulator = new LightSimulator(_gridSize);
 
+        Canvas.ForceUpdateCanvases();
         UpdateBoardLayOut();
 
         if (_gameService != null)
@@ -104,17 +112,26 @@ public class BoardManager : MonoBehaviour, IBoardService
             if (!_isGenerating) CreateNewStageAsync().Forget();
         });
 
-        InitInventory();
+        string savedSpiritName = PlayerPrefs.GetString(GameConsts.SelectedSpiritKey, string.Empty);
+        if (!string.IsNullOrEmpty(savedSpiritName))
+        {
+            var spirit = _allAvailableSpirits.Find(s => s != null && s.name == savedSpiritName);
+            if (spirit != null) SetSpirit(spirit);
+        }
+        else
+        {
+            InitInventory();
+        }
     }
 
     // --- IBoardService ---
 
-    public void SetTeam(List<SpiritData> team)
+    public void SetSpirit(SpiritData spirit)
     {
-        _assignedSpirits = team;
+        _assignedSpirit = spirit;
         InitInventory();
-        UpdateSpiritIcons(team);
-        Debug.Log($"[Board] 팀 편성 완료. 현재 출전 정령: {_assignedSpirits.Count}마리");
+        UpdateSpiritIcon();
+        Debug.Log($"[Board] 정령 편성 완료: {(spirit != null ? spirit.name : "없음")}");
     }
 
     public void OnPieceButtonClicked(PieceType type)
@@ -273,10 +290,9 @@ public class BoardManager : MonoBehaviour, IBoardService
         _remainingPieces[PieceType.Mirror] = 0;
         _remainingPieces[PieceType.Prism] = 0;
 
-        foreach (var spirit in _assignedSpirits.Take(3))
+        if (_assignedSpirit != null)
         {
-            if (spirit == null) continue;
-            foreach (var p in spirit.startingPieces)
+            foreach (var p in _assignedSpirit.startingPieces)
             {
                 if (_remainingPieces.ContainsKey(p.pieceType))
                     _remainingPieces[p.pieceType] += p.count;
@@ -287,8 +303,7 @@ public class BoardManager : MonoBehaviour, IBoardService
         UpdateInventoryUI();
     }
 
-    public SpiritData GetPrimarySpirit()
-        => _assignedSpirits.Count > 0 ? _assignedSpirits[0] : null;
+    public SpiritData GetPrimarySpirit() => _assignedSpirit;
 
     private void UpdateInventoryUI()
     {
@@ -302,23 +317,21 @@ public class BoardManager : MonoBehaviour, IBoardService
         OnPieceCountChanged?.Invoke();
     }
 
-    private void UpdateSpiritIcons(List<SpiritData> team)
+    private void UpdateSpiritIcon()
     {
-        foreach (Image icon in _spiritIcons)
+        if (_spiritIcon == null) return;
+        if (_assignedSpirit != null)
         {
-            if (icon == null) continue;
-            Color c = icon.color;
-            c.a = 0f;
-            icon.color = c;
-        }
-
-        for (int i = 0; i < team.Count; i++)
-        {
-            if (i >= _spiritIcons.Count || _spiritIcons[i] == null || team[i] == null) continue;
-            _spiritIcons[i].sprite = team[i].spiritIcon;
-            Color c = _spiritIcons[i].color;
+            _spiritIcon.sprite = _assignedSpirit.spiritIcon;
+            Color c = _spiritIcon.color;
             c.a = 1f;
-            _spiritIcons[i].color = c;
+            _spiritIcon.color = c;
+        }
+        else
+        {
+            Color c = _spiritIcon.color;
+            c.a = 0f;
+            _spiritIcon.color = c;
         }
     }
 
@@ -355,10 +368,26 @@ public class BoardManager : MonoBehaviour, IBoardService
     public void UpdateBoardLayOut()
     {
         if (_boardRect == null || _gridLayout == null) return;
-        float boardSize = _boardRect.rect.width;
-        float totalPadding = _gridLayout.padding.left + _gridLayout.padding.right;
-        float totalSpacing = _gridLayout.spacing.x * (_gridSize - 1);
-        float finalCellSize = (boardSize - totalPadding - totalSpacing) / _gridSize;
+        float boardWidth = _boardRect.rect.width;
+        if (boardWidth <= 0) return;
+
+        _lastBoardRectSize = _boardRect.rect.size;
+
+        float totalHPadding = _gridLayout.padding.left + _gridLayout.padding.right;
+        float totalHSpacing = _gridLayout.spacing.x * (_gridSize - 1);
+        float cellSizeByWidth = (boardWidth - totalHPadding - totalHSpacing) / _gridSize;
+
+        float cellSizeByHeight = cellSizeByWidth;
+        float boardHeight = _boardRect.rect.height;
+        if (boardHeight > 0)
+        {
+            float totalVPadding = _gridLayout.padding.top + _gridLayout.padding.bottom;
+            float totalVSpacing = _gridLayout.spacing.y * (_gridSize - 1);
+            cellSizeByHeight = (boardHeight - totalVPadding - totalVSpacing) / _gridSize;
+        }
+
+        float finalCellSize = Mathf.Min(cellSizeByWidth, cellSizeByHeight);
+        if (finalCellSize <= 0) return;
         _gridLayout.cellSize = new Vector2(finalCellSize, finalCellSize);
     }
 }
