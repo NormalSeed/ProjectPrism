@@ -18,7 +18,6 @@ public class BoardManager : MonoBehaviour, IBoardService
     private Vector2 _lastBoardRectSize;
 
     [Header("Light Visualization")]
-    [SerializeField] private Button _generateBoardButton;
     [SerializeField] private float _lightZOffset = -1f;
 
     [Header("Stage Config")]
@@ -27,6 +26,9 @@ public class BoardManager : MonoBehaviour, IBoardService
 
     [Header("Team & Inventory System")]
     [SerializeField] private List<SpiritData> _allAvailableSpirits = new List<SpiritData>();
+
+    [Header("Debug")]
+    [SerializeField] private SpiritData _debugDefaultSpirit;
     [SerializeField] private Image _spiritIcon;
     private SpiritData _assignedSpirit;
     private Dictionary<PieceType, int> _remainingPieces = new Dictionary<PieceType, int>();
@@ -107,21 +109,17 @@ public class BoardManager : MonoBehaviour, IBoardService
             Debug.Log($"[Board] {_tiles.Length}개의 타일 상호작용 연결 완료.");
         }
 
-        _generateBoardButton.onClick.AddListener(() =>
-        {
-            if (!_isGenerating) CreateNewStageAsync().Forget();
-        });
-
         string savedSpiritName = PlayerPrefs.GetString(GameConsts.SelectedSpiritKey, string.Empty);
         if (!string.IsNullOrEmpty(savedSpiritName))
         {
             var spirit = _allAvailableSpirits.Find(s => s != null && s.name == savedSpiritName);
             if (spirit != null) SetSpirit(spirit);
         }
-        else
+        else if (_debugDefaultSpirit != null)
         {
-            InitInventory();
+            SetSpirit(_debugDefaultSpirit);
         }
+        CreateNewStageAsync().Forget();
     }
 
     // --- IBoardService ---
@@ -232,7 +230,6 @@ public class BoardManager : MonoBehaviour, IBoardService
         if (!_gameService.isGameStarted) _gameService.isGameStarted = true;
 
         _isGenerating = true;
-        if (_generateBoardButton != null) _generateBoardButton.interactable = false;
 
         InitInventory();
 
@@ -243,7 +240,6 @@ public class BoardManager : MonoBehaviour, IBoardService
         {
             Debug.LogError("[Board] 사용할 수 있는 기물이 없습니다.");
             _isGenerating = false;
-            if (_generateBoardButton != null) _generateBoardButton.interactable = true;
             return;
         }
 
@@ -254,7 +250,6 @@ public class BoardManager : MonoBehaviour, IBoardService
             ApplyStageResult(result);
         }
 
-        if (_generateBoardButton != null) _generateBoardButton.interactable = true;
         _isGenerating = false;
     }
 

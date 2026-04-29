@@ -15,11 +15,13 @@ public class BoardLifetimeScope : LifetimeScope
         // 핵심 로직 매니저 등록
         builder.RegisterComponentInHierarchy<GameManager>().As<IGameService>();
         builder.RegisterComponentInHierarchy<BoardManager>().As<IBoardService>();
-        builder.RegisterComponentInHierarchy<ItemInventoryManager>().As<IItemInventoryService>();
         builder.RegisterComponentInHierarchy<MonsterManager>().As<IMonsterService>();
 
+        // 정령 인벤토리 등록
+        builder.RegisterComponentInHierarchy<SpiritInventoryManager>().As<IInventoryService>();
+        builder.RegisterComponentInHierarchy<SpiritInventoryUI>();
+
         // UI 컨트롤러 등록
-        builder.RegisterComponentInHierarchy<NewUserSetupPresenter>();
         builder.RegisterComponentInHierarchy<PieceSelectorUI>();
         builder.RegisterComponentInHierarchy<RightUI>();
         builder.RegisterComponentInHierarchy<MonsterBattleUI>();
