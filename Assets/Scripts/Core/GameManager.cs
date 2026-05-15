@@ -9,11 +9,15 @@ public class GameManager : MonoBehaviour, IGameService
     [SerializeField] private float _timeBonusScale = 10f;
 
     private ISceneService _sceneService;
+    private IRunService _runService;
+    private IDungeonMapService _dungeonMapService;
 
     [Inject]
-    public void Construct(ISceneService sceneService)
+    public void Construct(ISceneService sceneService, IRunService runService, IDungeonMapService dungeonMapService)
     {
         _sceneService = sceneService;
+        _runService = runService;
+        _dungeonMapService = dungeonMapService;
     }
 
     public ObservableProperty<int> StageLevel { get; } = new(1);
@@ -23,11 +27,16 @@ public class GameManager : MonoBehaviour, IGameService
     public event Action<int> OnDamageCalculated;
     public event Action OnBoardClear;
     public event Action<int> OnBoardChanged;
+    public event Action OnRoomCompleted;
 
     public bool isGameStarted { get; set; } = false;
 
     private void Start()
     {
+        string spiritName = PlayerPrefs.GetString(GameConsts.SelectedSpiritKey, string.Empty);
+        _runService.StartRun(spiritName);
+        _dungeonMapService.GenerateFloor(1);
+
         OnBoardClear += () =>
         {
             RefreshBoard();
@@ -71,7 +80,10 @@ public class GameManager : MonoBehaviour, IGameService
     public void ReportMonsterDefeated()
     {
         StageLevel.Value++;
-        Debug.Log($"<color=red> [Game] 몬스터 처치. 다음 스테이지 {StageLevel.Value} 시작.");
+        _runService.AdvanceRoom();
+        _dungeonMapService.ClearCurrentRoom();
+        OnRoomCompleted?.Invoke();
+        Debug.Log($"<color=red> [Game] 몬스터 처치. 다음 스테이지 {StageLevel.Value} | 방 {_runService.CurrentRun?.RoomIndex} 시작.");
     }
 
     public void RefreshBoard()

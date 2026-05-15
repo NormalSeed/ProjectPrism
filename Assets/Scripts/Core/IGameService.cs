@@ -6,6 +6,7 @@ public interface IGameService
     event Action<int> OnBoardChanged;
     event Action OnBoardClear;
     event Action<int> OnDamageCalculated;
+    event Action OnRoomCompleted;
 
     public ObservableProperty<int> StageLevel { get; }
     public ObservableProperty<float> RemainingTime { get; }

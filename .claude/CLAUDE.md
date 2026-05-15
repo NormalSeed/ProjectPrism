@@ -42,6 +42,16 @@
 
 /Assets/Settings: Renderer Features (URP), 물리 및 태그 설정
 
+## 씬 오브젝트 추가 워크플로우
+Unity 씬(.unity) 또는 프리팹(.prefab)에 새 GameObject/컴포넌트를 직접 추가해야 하는 경우:
+1. 먼저 사용자에게 추가할 오브젝트의 이름, 계층 구조, 컴포넌트, Inspector 참조 등을 확인한다.
+2. 사용자 승인 후, Unity Editor 없이 Unity YAML을 직접 작성하여 씬/프리팹 파일을 수정한다.
+   - fileID는 기존 씬에서 충돌하지 않는 범위를 사전에 확인한다.
+   - 컴포넌트 GUID는 기존 씬/프리팹에서 동일 컴포넌트의 사용 예를 Grep으로 찾아 검증한다.
+   - 부모 RectTransform의 m_Children에 새 자식 fileID를 추가하는 것을 빠뜨리지 않는다.
+   - .meta 파일이 필요한 신규 에셋은 반드시 함께 생성한다.
+3. Inspector에서 드래그로 연결해야 할 참조는 YAML의 SerializeField 필드에 직접 기입한다.
+
 ## 중요사항
 - 에셋 관리: 대용량 캐릭터 리소스는 Addressables 시스템을 통해 동적으로 로드 및 언로드합니다.
 - 버전 관리: .meta 파일 누락은 엄격히 금지하며, 대용량 바이너리는 LFS (Large File Storage)를 사용합니다.

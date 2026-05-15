@@ -1,0 +1,22 @@
+{
+    "name": "GameCode",
+    "rootNamespace": "",
+    "references": [
+        "UniTask",
+        "VContainer",
+        "VContainer.Unity",
+        "Unity.TextMeshPro",
+        "GoogleSignIn",
+        "DOTween.Modules",
+        "UniTask.DOTween"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

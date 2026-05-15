@@ -8,6 +8,12 @@ public class BoardLifetimeScope : LifetimeScope
         // 씬 전환 서비스
         builder.Register<ISceneService, SceneService>(Lifetime.Singleton);
 
+        // 런 관리 서비스
+        builder.Register<IRunService, RunManager>(Lifetime.Singleton);
+
+        // 던전 맵 서비스
+        builder.Register<IDungeonMapService, DungeonMapManager>(Lifetime.Singleton);
+
         // 퍼즐 서비스 등록
         builder.Register<AstarSolver>(Lifetime.Singleton);
         builder.Register<PuzzlePathFinder>(Lifetime.Singleton);
@@ -25,5 +31,6 @@ public class BoardLifetimeScope : LifetimeScope
         builder.RegisterComponentInHierarchy<PieceSelectorUI>();
         builder.RegisterComponentInHierarchy<RightUI>();
         builder.RegisterComponentInHierarchy<MonsterBattleUI>();
+        builder.RegisterComponentInHierarchy<DungeonMapUI>();
     }
 }

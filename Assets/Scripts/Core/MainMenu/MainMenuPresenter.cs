@@ -16,6 +16,11 @@ public class MainMenuPresenter : MonoBehaviour
         _sceneService = sceneService;
     }
 
+    private void Start()
+    {
+        StartGame();
+    }
+
     public void StartGame()
     {
         if (_spiritSelectPanel != null)

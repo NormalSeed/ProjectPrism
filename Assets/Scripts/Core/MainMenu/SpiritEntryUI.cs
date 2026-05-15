@@ -9,6 +9,8 @@ public class SpiritEntryUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _nameText;
     [SerializeField] private CanvasGroup _canvasGroup;
     [SerializeField] private Button _button;
+    [SerializeField] private TextMeshProUGUI _pieceInfoText;
+    [SerializeField] private TextMeshProUGUI _passiveText;
 
     private SpiritData _data;
     private Action<SpiritData> _onSelected;
@@ -32,6 +34,21 @@ public class SpiritEntryUI : MonoBehaviour
 
         if (_button != null)
             _button.interactable = isOwned;
+
+        if (_pieceInfoText != null)
+        {
+            int mirrors = data.GetPieceCount(PieceType.Mirror);
+            int prisms = data.GetPieceCount(PieceType.Prism);
+            _pieceInfoText.text = $"거울 {mirrors} / 프리즘 {prisms}";
+        }
+
+        if (_passiveText != null)
+        {
+            string passiveName = data.PassiveEffect != null
+                ? data.PassiveEffect.EffectName
+                : data.passiveSkillDescription;
+            _passiveText.text = passiveName;
+        }
     }
 
     public void OnClick()
