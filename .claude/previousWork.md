@@ -2,23 +2,33 @@
 
 ---
 
-## Session: 2026-05-15
+## Session: Phase C Implementation
 
-### Task: DungeonMapManager - EnterRoom & OnRoomEntered Implementation
+### Goal
+Implement Phase C: ItemInventoryManager DI wiring, DungeonMap ↔ RunManager flow, and auth → MainMenu scene transition.
 
-**Context:**
-The dungeon map system (DungeonMapGenerator, DungeonMapManager, DungeonMapData, DungeonMapPresenter, DungeonMapUI) was scaffolded in the previous session. However, `DungeonMapManagerTests` expected `EnterRoom(string)` and `event Action<RoomType> OnRoomEntered` members that did not yet exist.
+### Changes Made
 
-**Changes Made:**
+**1. BoardLifetimeScope.cs**
+- Added `builder.RegisterComponentInHierarchy<ItemInventoryManager>().As<IItemInventoryService>();`
 
-1. **`IDungeonMapService.cs`** — Added `event Action<RoomType> OnRoomEntered` and `bool EnterRoom(string roomId)` to the interface.
+**2. GameTest.unity**
+- Added root GameObject "ItemInventoryManager" (fileID 2200000010) with Transform (2200000011) and MonoBehaviour (2200000012, script GUID `43e1037109d721b4b8c6ed97514b9f04`)
+- Added fileID 2200000011 to SceneRoots.m_Roots
 
-2. **`DungeonMapManager.cs`** — Implemented `EnterRoom`: validates the room is connected from the current room, calls `CurrentMap.MoveToRoom`, fires `OnRoomEntered` event with the room type. Returns `false` without moving if the room is not connected.
+**3. GameManager.cs**
+- `Start()`: subscribe `_dungeonMapService.OnRoomEntered += OnRoomEntered`; replaced lambda with method group for `OnBoardClear`
+- Added `OnDestroy()`: unsubscribes both events
+- Added `private void OnRoomEntered(RoomType _) => RefreshBoard()`
+- `ReportMonsterDefeated()`: after `ClearCurrentRoom()`, checks `IsFloorComplete`; if true calls `_runService.AdvanceFloor()` then `_dungeonMapService.GenerateFloor(_runService.CurrentRun?.Floor ?? 1)`
 
-3. **`DungeonMapPresenter.cs`** — Simplified `SelectRoom` to delegate to `_service.EnterRoom(roomId)` (removed duplicated validation logic).
+**4. NewUserSetupPresenter.cs**
+- Removed `IInventoryService` injection entirely (was causing MainMenu DI conflict due to `SpiritInventoryManager` requiring `IBoardService`)
+- Replaced `_inventoryService.LoadOwnedSpirits(...)` with `PlayerPrefs.SetString(GameConsts.SelectedSpiritKey, _starterSpirit.name)`
+- Replaced hardcoded `"IsNewUser"` string with `GameConsts.IsNewUserKey`
 
-4. **`DungeonMapPresenterTests.cs`** — Updated `StubDungeonMapService` to implement the new interface members (`OnRoomEntered` event, `EnterRoom` with connection validation).
+**5. MainMenuLifetimeScope.cs**
+- Added `builder.RegisterComponentInHierarchy<NewUserSetupPresenter>();`
 
-**Result:** All `DungeonMapManagerTests` and `DungeonMapPresenterTests` should now compile and pass.
-
----
+### Result
+Unity console: 0 errors, 0 warnings after compile. All Phase C tasks complete.

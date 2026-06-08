@@ -27,6 +27,9 @@ public class BoardLifetimeScope : LifetimeScope
         builder.RegisterComponentInHierarchy<SpiritInventoryManager>().As<IInventoryService>();
         builder.RegisterComponentInHierarchy<SpiritInventoryUI>();
 
+        // 아이템 인벤토리 등록
+        builder.RegisterComponentInHierarchy<ItemInventoryManager>().As<IItemInventoryService>();
+
         // UI 컨트롤러 등록
         builder.RegisterComponentInHierarchy<PieceSelectorUI>();
         builder.RegisterComponentInHierarchy<RightUI>();

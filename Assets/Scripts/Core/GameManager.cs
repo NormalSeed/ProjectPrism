@@ -37,14 +37,20 @@ public class GameManager : MonoBehaviour, IGameService
         _runService.StartRun(spiritName);
         _dungeonMapService.GenerateFloor(1);
 
-        OnBoardClear += () =>
-        {
-            RefreshBoard();
-        };
+        OnBoardClear += RefreshBoard;
+        _dungeonMapService.OnRoomEntered += OnRoomEntered;
 
         BoardDuration.Value = 30f;
         RemainingTime.Value = BoardDuration.Value;
     }
+
+    private void OnDestroy()
+    {
+        OnBoardClear -= RefreshBoard;
+        _dungeonMapService.OnRoomEntered -= OnRoomEntered;
+    }
+
+    private void OnRoomEntered(RoomType _) => RefreshBoard();
 
     private void Update()
     {
@@ -83,7 +89,16 @@ public class GameManager : MonoBehaviour, IGameService
         _runService.AdvanceRoom();
         _dungeonMapService.ClearCurrentRoom();
         OnRoomCompleted?.Invoke();
-        Debug.Log($"<color=red> [Game] 몬스터 처치. 다음 스테이지 {StageLevel.Value} | 방 {_runService.CurrentRun?.RoomIndex} 시작.");
+
+        if (_dungeonMapService.IsFloorComplete)
+        {
+            _runService.AdvanceFloor();
+            int nextFloor = _runService.CurrentRun?.Floor ?? 1;
+            _dungeonMapService.GenerateFloor(nextFloor);
+            Debug.Log($"<color=cyan>[Game] 층 클리어! {nextFloor}층 생성.</color>");
+        }
+
+        Debug.Log($"<color=red>[Game] 몬스터 처치. 다음 스테이지 {StageLevel.Value} | 방 {_runService.CurrentRun?.RoomIndex} 시작.</color>");
     }
 
     public void RefreshBoard()

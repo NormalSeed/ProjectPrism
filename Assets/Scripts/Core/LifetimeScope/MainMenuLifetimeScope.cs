@@ -8,5 +8,6 @@ public class MainMenuLifetimeScope : LifetimeScope
         builder.Register<ISceneService, SceneService>(Lifetime.Singleton);
         builder.RegisterComponentInHierarchy<MainMenuPresenter>();
         builder.RegisterComponentInHierarchy<SpiritSelectPanelPresenter>();
+        builder.RegisterComponentInHierarchy<NewUserSetupPresenter>();
     }
 }

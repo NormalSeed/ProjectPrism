@@ -1,25 +1,16 @@
-using System.Collections.Generic;
 using UnityEngine;
-using VContainer;
 
 public class NewUserSetupPresenter : MonoBehaviour
 {
     [SerializeField] private SpiritData _starterSpirit;
 
     private NewUserSetupView _view;
-    private IInventoryService _inventoryService;
-
-    [Inject]
-    public void Construct(IInventoryService inventoryService)
-    {
-        _inventoryService = inventoryService;
-    }
 
     private void Start()
     {
         _view = GetComponent<NewUserSetupView>();
 
-        if (PlayerPrefs.GetInt("IsNewUser", 0) == 1)
+        if (PlayerPrefs.GetInt(GameConsts.IsNewUserKey, 0) == 1)
         {
             _view.Show();
             _view.ConfirmButton.onClick.AddListener(OnConfirmClicked);
@@ -45,11 +36,12 @@ public class NewUserSetupPresenter : MonoBehaviour
         _view.SetInteractable(false);
 
         PlayerPrefs.SetString("PlayerNickname", nickname);
-        PlayerPrefs.DeleteKey("IsNewUser");
-        PlayerPrefs.Save();
+        PlayerPrefs.DeleteKey(GameConsts.IsNewUserKey);
 
         if (_starterSpirit != null)
-            _inventoryService.LoadOwnedSpirits(new List<SpiritData> { _starterSpirit });
+            PlayerPrefs.SetString(GameConsts.SelectedSpiritKey, _starterSpirit.name);
+
+        PlayerPrefs.Save();
 
         Debug.Log($"[NewUser] 닉네임 설정 완료: {nickname}. 튜토리얼을 시작합니다.");
 

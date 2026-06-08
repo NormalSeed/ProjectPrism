@@ -18,6 +18,7 @@ public class ObservableProperty<T>
         }
     }
 
+    [System.NonSerialized]
     private UnityEvent<T> onValueChanged = new();
     public ObservableProperty(T value = default)
     {
